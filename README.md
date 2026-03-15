@@ -1,2 +1,42 @@
-# naive-fin-data
+﻿# naive-fin-data
 朴实无华的金融数据项目
+
+## 功能
+- 基于 `akshare` 东财接口抓取 A 股与港股历史行情
+- A 股与港股分别提供单标的抓取和全量抓取函数
+- 数据落盘路径：`data/{type}/{market}/{code}/{period}/{yyyyMMdd}.parquet`
+- GitHub Actions 每日定时顺序执行：A 股全量 -> 港股全量
+
+## 安装
+```bash
+pip install -r requirements.txt
+```
+
+## 命令
+```bash
+# A 股单标的抓取
+PYTHONPATH=src python -m naive_fin_data.cli single-a --code 600519 --period daily --output-root data
+
+# A 股全量抓取（可选 limit 先做小规模验证）
+PYTHONPATH=src python -m naive_fin_data.cli full-a --period daily --output-root data --limit 10
+
+# 港股单标的抓取
+PYTHONPATH=src python -m naive_fin_data.cli single-hk --code 00005 --period daily --output-root data
+
+# 港股全量抓取（可选 limit 先做小规模验证）
+PYTHONPATH=src python -m naive_fin_data.cli full-hk --period daily --output-root data --limit 10
+```
+
+## 测试
+```bash
+pip install -r requirements-dev.txt
+# 仅保留集成测试（真实调用 AkShare）
+PYTHONPATH=src pytest -q -m integration
+```
+
+## GitHub Action
+工作流文件：`.github/workflows/daily-fetch.yml`
+
+- 每天 UTC `22:00`（北京时间次日 `06:00`）自动执行
+- 顺序执行全量抓取：A 股 -> 港股
+- 会将新增的 `data` 目录内容提交回仓库

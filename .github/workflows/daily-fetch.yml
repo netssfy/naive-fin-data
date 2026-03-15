@@ -1,0 +1,54 @@
+﻿name: daily-fetch
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 22:00 UTC = 06:00 Asia/Shanghai
+    - cron: "0 22 * * *"
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run full fetch A-share
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m naive_fin_data.cli full-a --type stock --period daily --output-root data
+
+      - name: Run full fetch HK
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m naive_fin_data.cli full-hk --type stock --period daily --output-root data
+
+      - name: Commit data updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -d data ]; then
+            git add data
+          fi
+
+          if ! git diff --staged --quiet; then
+            git commit -m "chore(data): daily fetch"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
