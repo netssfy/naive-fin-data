@@ -14,14 +14,14 @@ from naive_fin_data.fetcher import (
 def _add_common_single_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--type", default="stock", help="target type")
     parser.add_argument("--code", required=True, help="symbol code")
-    parser.add_argument("--period", default="daily", help="period: daily/weekly/monthly")
+    parser.add_argument("--period", default="1d", help="period: 1m/5m/15m/30m/60m/1d")
     parser.add_argument("--adjust", default="", help="adjust type")
     parser.add_argument("--output-root", default="data", help="data root directory")
 
 
 def _add_common_full_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--type", default="stock", help="target type")
-    parser.add_argument("--period", default="daily", help="period: daily/weekly/monthly")
+    parser.add_argument("--period", default="1d", help="period: 1m/5m/15m/30m/60m/1d")
     parser.add_argument("--adjust", default="", help="adjust type")
     parser.add_argument("--output-root", default="data", help="data root directory")
     parser.add_argument("--limit", type=int, default=None, help="optional symbol count cap")

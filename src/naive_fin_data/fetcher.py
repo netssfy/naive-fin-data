@@ -8,6 +8,23 @@ from typing import Callable, Iterable
 import akshare as ak
 import pandas as pd
 
+MINUTE_PERIOD_MAP = {
+    "1m": "1",
+    "5m": "5",
+    "15m": "15",
+    "30m": "30",
+    "60m": "60",
+}
+
+DAY_PERIOD_MAP = {
+    "1d": "daily",
+    "1w": "weekly",
+    "1mo": "monthly",
+    "daily": "daily",
+    "weekly": "weekly",
+    "monthly": "monthly",
+}
+
 
 @dataclass(frozen=True)
 class FetchTarget:
@@ -19,6 +36,18 @@ class FetchTarget:
 
 def _today_str() -> str:
     return datetime.now().strftime("%Y%m%d")
+
+
+def _normalize_period(period: str) -> str:
+    return str(period).strip().lower()
+
+
+def _resolve_minute_period(period: str) -> str | None:
+    return MINUTE_PERIOD_MAP.get(_normalize_period(period))
+
+
+def _resolve_day_period(period: str) -> str | None:
+    return DAY_PERIOD_MAP.get(_normalize_period(period))
 
 
 def _normalize_hist_df(df: pd.DataFrame, code: str) -> pd.DataFrame:
@@ -71,8 +100,18 @@ def fetch_single_a_share(
     type_name: str = "stock",
     market: str = "cn",
 ) -> Path:
-    target = FetchTarget(type=type_name, market=market, code=code, period=period)
-    df = ak.stock_zh_a_hist(symbol=code, period=period, adjust=adjust)
+    norm_period = _normalize_period(period)
+    target = FetchTarget(type=type_name, market=market, code=code, period=norm_period)
+
+    minute_period = _resolve_minute_period(norm_period)
+    if minute_period is not None:
+        df = ak.stock_zh_a_hist_min_em(symbol=code, period=minute_period, adjust=adjust)
+    else:
+        day_period = _resolve_day_period(norm_period)
+        if day_period is None:
+            raise ValueError(f"unsupported A-share period: {period}")
+        df = ak.stock_zh_a_hist(symbol=code, period=day_period, adjust=adjust)
+
     df = _normalize_hist_df(df, code)
     if df.empty:
         raise ValueError(f"no data returned for {code}")
@@ -123,8 +162,18 @@ def fetch_single_hk(
     market: str = "hk",
 ) -> Path:
     norm_code = str(code).zfill(5)
-    target = FetchTarget(type=type_name, market=market, code=norm_code, period=period)
-    df = ak.stock_hk_hist(symbol=norm_code, period=period, adjust=adjust)
+    norm_period = _normalize_period(period)
+    target = FetchTarget(type=type_name, market=market, code=norm_code, period=norm_period)
+
+    minute_period = _resolve_minute_period(norm_period)
+    if minute_period is not None:
+        df = ak.stock_hk_hist_min_em(symbol=norm_code, period=minute_period, adjust=adjust)
+    else:
+        day_period = _resolve_day_period(norm_period)
+        if day_period is None:
+            raise ValueError(f"unsupported HK period: {period}")
+        df = ak.stock_hk_hist(symbol=norm_code, period=day_period, adjust=adjust)
+
     df = _normalize_hist_df(df, norm_code)
     if df.empty:
         raise ValueError(f"no data returned for {norm_code}")
