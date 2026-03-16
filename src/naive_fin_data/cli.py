@@ -4,6 +4,8 @@ import argparse
 from pathlib import Path
 
 from naive_fin_data.fetcher import (
+    export_a_share_code_list,
+    export_hk_code_list,
     fetch_all_a_share,
     fetch_all_hk,
     fetch_single_a_share,
@@ -45,6 +47,14 @@ def build_parser() -> argparse.ArgumentParser:
     full_hk = sub.add_parser("full-hk", help="fetch all HK symbols")
     _add_common_full_args(full_hk)
 
+    codes_a = sub.add_parser("codes-a", help="export all A-share stock codes")
+    codes_a.add_argument("--type", default="stock", help="target type")
+    codes_a.add_argument("--output-root", default="data", help="data root directory")
+
+    codes_hk = sub.add_parser("codes-hk", help="export all HK stock codes")
+    codes_hk.add_argument("--type", default="stock", help="target type")
+    codes_hk.add_argument("--output-root", default="data", help="data root directory")
+
     return parser
 
 
@@ -72,6 +82,24 @@ def main() -> int:
             period=args.period,
             output_root=output_root,
             adjust=args.adjust,
+            type_name=args.type,
+            market="hk",
+        )
+        print(f"saved: {output_file}")
+        return 0
+
+    if args.command == "codes-a":
+        output_file = export_a_share_code_list(
+            output_root=output_root,
+            type_name=args.type,
+            market="cn",
+        )
+        print(f"saved: {output_file}")
+        return 0
+
+    if args.command == "codes-hk":
+        output_file = export_hk_code_list(
+            output_root=output_root,
             type_name=args.type,
             market="hk",
         )
