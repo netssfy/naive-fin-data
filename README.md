@@ -7,7 +7,7 @@
 - A 股与港股分别提供单标的抓取和全量抓取函数
 - 全量抓取支持周期参数：`1m,5m,15m,30m,60m,1d`
 - 数据落盘路径：`data/{type}/{market}/{code}/{period}/{yyyyMMdd}.parquet`
-- 行情 parquet 列名归一化为英文：`timestamp,open,high,low,close,adj_close,volume,code`
+- 行情 parquet 列名归一化为英文：`timestamp,open,high,low,close,adj_close,volume,code`\n- 每次抓取后会更新 `data/{type}/{market}/{code}/status.json`（`last_fetch_time`、`last_data_time`、累计 `total_records`）
 - 股票代码列表导出路径：`data/{type}/{market}/code.jsonl`（存在则按 code 更新）
 
 ## 安装
@@ -50,4 +50,5 @@ PYTHONPATH=src pytest -q -m integration
 - 对 A 股与港股分别抓取周期：`1m,5m,15m,30m,60m,1d`
 - `workflow_dispatch` 支持可选输入 `limit`；不传则全量抓取
 - 抓取完成后会 `git add data` 并推送到当前分支
+
 

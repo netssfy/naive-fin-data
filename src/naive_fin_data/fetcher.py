@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Iterable
+import time
 
 import akshare as ak
 import pandas as pd
@@ -52,7 +53,14 @@ def _normalize_price_df(df: pd.DataFrame, code: str) -> pd.DataFrame:
     if df.empty:
         return df
 
-    out = df.reset_index().copy()
+    out = df.copy()
+    if isinstance(out.columns, pd.MultiIndex):
+        out.columns = [col[0] if isinstance(col, tuple) else col for col in out.columns]
+
+    out = out.reset_index().copy()
+    if isinstance(out.columns, pd.MultiIndex):
+        out.columns = [col[0] if isinstance(col, tuple) else col for col in out.columns]
+
     rename_map = {
         "Date": "timestamp",
         "Datetime": "timestamp",
@@ -71,6 +79,7 @@ def _normalize_price_df(df: pd.DataFrame, code: str) -> pd.DataFrame:
 
     out["code"] = code
     out = out[["timestamp", "open", "high", "low", "close", "adj_close", "volume", "code"]]
+    out.columns = [str(col) for col in out.columns]
     return out
 
 
@@ -83,6 +92,46 @@ def _save_parquet(df: pd.DataFrame, target: FetchTarget, output_root: Path | str
     df.to_parquet(output_file, index=False)
     return output_file
 
+
+
+def _extract_last_data_time(df: pd.DataFrame) -> str | None:
+    if "timestamp" not in df.columns or df.empty:
+        return None
+    ts = pd.to_datetime(df["timestamp"], errors="coerce").dropna()
+    if ts.empty:
+        return None
+    return ts.max().isoformat()
+
+
+def _update_status(df: pd.DataFrame, target: FetchTarget, output_root: Path | str) -> Path:
+    output_root = Path(output_root)
+    status_dir = output_root / target.type / target.market / target.code
+    status_dir.mkdir(parents=True, exist_ok=True)
+    status_file = status_dir / "status.json"
+
+    total_records = int(len(df))
+    status: dict[str, object] = {}
+    if status_file.exists():
+        try:
+            status = json.loads(status_file.read_text(encoding="utf-8"))
+            prev_total = int(status.get("total_records", 0))
+            total_records += prev_total
+        except Exception:
+            status = {}
+
+    status["last_fetch_time"] = datetime.now().isoformat()
+    status["last_data_time"] = _extract_last_data_time(df)
+    status["total_records"] = total_records
+    status["code"] = target.code
+    status["market"] = target.market
+    status["type"] = target.type
+    status["last_period"] = target.period
+
+    status_file.write_text(
+        json.dumps(status, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return status_file
 
 def _save_code_jsonl(
     df: pd.DataFrame,
@@ -220,19 +269,33 @@ def _to_yf_a_symbol(code: str) -> str:
 
 
 def _to_yf_hk_symbol(code: str) -> str:
-    return f"{str(code).strip().zfill(5)}.HK"
+    raw = str(code).strip()
+    numeric = raw.lstrip("0") or "0"
+    # Yahoo HK equities are usually 4-digit codes (e.g. 0001.HK, 0700.HK).
+    # Keep wider codes if present (e.g. 10000 -> 10000.HK).
+    return f"{numeric.zfill(4)}.HK"
 
 
 def _download_with_yfinance(symbol: str, period: str) -> pd.DataFrame:
     cfg = _get_interval_config(period)
-    return yf.download(
-        tickers=symbol,
-        period=cfg["period"],
-        interval=cfg["interval"],
-        auto_adjust=False,
-        progress=False,
-        threads=False,
-    )
+    retries = 4
+    for attempt in range(retries):
+        df = yf.download(
+            tickers=symbol,
+            period=cfg["period"],
+            interval=cfg["interval"],
+            auto_adjust=False,
+            progress=False,
+            threads=False,
+        )
+        if not df.empty:
+            return df
+
+        if attempt < retries - 1:
+            # Backoff for Yahoo transient throttling.
+            time.sleep(3 * (attempt + 1))
+
+    return pd.DataFrame()
 
 
 def fetch_single_a_share(
@@ -252,7 +315,10 @@ def fetch_single_a_share(
     df = _normalize_price_df(df, norm_code)
     if df.empty:
         raise ValueError(f"no data returned for {norm_code}")
-    return _save_parquet(df=df, target=target, output_root=output_root)
+
+    output_file = _save_parquet(df=df, target=target, output_root=output_root)
+    _update_status(df=df, target=target, output_root=output_root)
+    return output_file
 
 
 def list_all_a_share_codes() -> list[str]:
@@ -309,7 +375,10 @@ def fetch_single_hk(
     df = _normalize_price_df(df, norm_code)
     if df.empty:
         raise ValueError(f"no data returned for {norm_code}")
-    return _save_parquet(df=df, target=target, output_root=output_root)
+
+    output_file = _save_parquet(df=df, target=target, output_root=output_root)
+    _update_status(df=df, target=target, output_root=output_root)
+    return output_file
 
 
 def list_all_hk_codes() -> list[str]:
@@ -460,6 +529,14 @@ def fetch_all(
         symbols=symbols,
         limit=limit,
     )
+
+
+
+
+
+
+
+
 
 
 
