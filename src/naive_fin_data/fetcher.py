@@ -176,20 +176,37 @@ def _get_code_name_df(
     if code_col is None:
         raise RuntimeError(f"code column not found in {list(df.columns)}")
 
-    name_col = next((c for c in name_candidates if c in df.columns), None)
     out = pd.DataFrame()
     out["code"] = df[code_col].dropna().astype(str).str.strip()
     if zfill is not None:
         out["code"] = out["code"].str.zfill(zfill)
 
-    if name_col is None:
+    name_series = None
+    for col in name_candidates:
+        if col not in df.columns:
+            continue
+        s = df[col].fillna("").astype(str).str.strip()
+        non_empty = s[(s != "") & (s.str.lower() != "nan")]
+        if not non_empty.empty:
+            name_series = s
+            break
+    if name_series is None:
         out["name"] = ""
     else:
-        out["name"] = df[name_col].astype(str).fillna("").str.strip()
+        out["name"] = name_series
 
     out = out.drop_duplicates(subset=["code"]).reset_index(drop=True)
     return out
 
+
+def _merge_code_name_df(base: pd.DataFrame, patch: pd.DataFrame) -> pd.DataFrame:
+    merged = base.copy()
+    patch_map = dict(zip(patch["code"].astype(str), patch["name"].astype(str)))
+    merged["name"] = merged.apply(
+        lambda r: patch_map.get(str(r["code"]), str(r["name"])) if str(r["name"]).strip() == "" else str(r["name"]),
+        axis=1,
+    )
+    return merged
 
 def _to_yf_a_symbol(code: str) -> str:
     raw = str(code).strip().zfill(6)
@@ -342,7 +359,7 @@ def export_a_share_code_list(
     market: str = "cn",
 ) -> Path:
     df = ak.stock_info_a_code_name()
-    out = _get_code_name_df(df, ["code", "代码"], ["name", "名称"], zfill=6)
+    out = _get_code_name_df(df, ["code", "代码"], ["中文名称", "name", "名称", "英文名称"], zfill=6)
     out["market"] = market
     return _save_code_jsonl(out, output_root=output_root, type_name=type_name, market=market)
 
@@ -354,10 +371,36 @@ def export_hk_code_list(
 ) -> Path:
     try:
         df = ak.stock_hk_spot_em()
-        out = _get_code_name_df(df, ["代码", "code", "symbol"], ["名称", "name"], zfill=5)
+        out = _get_code_name_df(df, ["代码", "code", "symbol"], ["名称", "中文名称", "name", "英文名称"], zfill=5)
     except Exception:
         df = ak.stock_hk_spot()
-        out = _get_code_name_df(df, ["symbol", "代码", "code"], ["name", "名称"], zfill=5)
+        out = _get_code_name_df(df, ["symbol", "代码", "code"], ["中文名称", "name", "名称", "英文名称"], zfill=5)
+
+    if (out["name"].astype(str).str.strip() == "").any():
+        try:
+            patch_df = ak.stock_hk_main_board_spot_em()
+            patch = _get_code_name_df(
+                patch_df,
+                ["代码", "code", "symbol"],
+                ["名称", "中文名称", "name", "英文名称"],
+                zfill=5,
+            )
+            out = _merge_code_name_df(out, patch)
+        except Exception:
+            pass
+
+    if (out["name"].astype(str).str.strip() == "").any():
+        try:
+            patch_df = ak.stock_hk_spot()
+            patch = _get_code_name_df(
+                patch_df,
+                ["symbol", "代码", "code"],
+                ["中文名称", "name", "名称", "英文名称"],
+                zfill=5,
+            )
+            out = _merge_code_name_df(out, patch)
+        except Exception:
+            pass
 
     out["market"] = market
     return _save_code_jsonl(out, output_root=output_root, type_name=type_name, market=market)
@@ -417,6 +460,9 @@ def fetch_all(
         symbols=symbols,
         limit=limit,
     )
+
+
+
 
 
 
