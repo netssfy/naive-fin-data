@@ -58,12 +58,19 @@ jobs:
             done
           done
 
+      - name: Build page status data
+        run: |
+          python scripts/build_status_page_data.py
+
       - name: Commit data updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ -d data ]; then
             git add data
+          fi
+          if [ -d docs ]; then
+            git add docs
           fi
 
           if ! git diff --staged --quiet; then

@@ -1,0 +1,206 @@
+{
+  "generated_at": "2026-03-17T23:08:30.659989",
+  "items": [
+    {
+      "type": "stock",
+      "market": "cn",
+      "code": "000001",
+      "name": "平安银行",
+      "periods": {
+        "1d": {
+          "last_fetch_time": "2026-03-16T16:18:11.386074",
+          "last_data_time": "2026-03-16T00:00:00",
+          "total_records": 21426
+        }
+      },
+      "period_count": 1,
+      "total_records": 21426,
+      "latest_fetch_time": "2026-03-16T16:18:11.386074",
+      "latest_data_time": "2026-03-16T00:00:00",
+      "status": "fresh"
+    },
+    {
+      "type": "stock",
+      "market": "cn",
+      "code": "000002",
+      "name": "万  科Ａ",
+      "periods": {
+        "1d": {
+          "last_fetch_time": "2026-03-16T16:18:11.756829",
+          "last_data_time": "2026-03-16T00:00:00",
+          "total_records": 21426
+        }
+      },
+      "period_count": 1,
+      "total_records": 21426,
+      "latest_fetch_time": "2026-03-16T16:18:11.756829",
+      "latest_data_time": "2026-03-16T00:00:00",
+      "status": "fresh"
+    },
+    {
+      "type": "stock",
+      "market": "cn",
+      "code": "000725",
+      "name": "京东方Ａ",
+      "periods": {
+        "1d": {
+          "last_fetch_time": "2026-03-17T15:00:58.002083",
+          "last_data_time": "2026-03-17T00:00:00",
+          "total_records": 24906
+        },
+        "1m": {
+          "last_fetch_time": "2026-03-17T15:00:51.938272",
+          "last_data_time": "2026-03-17T06:59:00+00:00",
+          "total_records": 2310
+        },
+        "5m": {
+          "last_fetch_time": "2026-03-17T15:00:53.226354",
+          "last_data_time": "2026-03-17T06:55:00+00:00",
+          "total_records": 3879
+        },
+        "15m": {
+          "last_fetch_time": "2026-03-17T15:00:54.415641",
+          "last_data_time": "2026-03-17T06:45:00+00:00",
+          "total_records": 1294
+        },
+        "30m": {
+          "last_fetch_time": "2026-03-17T15:00:55.628254",
+          "last_data_time": "2026-03-17T06:30:00+00:00",
+          "total_records": 648
+        },
+        "60m": {
+          "last_fetch_time": "2026-03-17T15:00:56.743160",
+          "last_data_time": "2026-03-17T06:30:00+00:00",
+          "total_records": 4371
+        }
+      },
+      "period_count": 6,
+      "total_records": 37408,
+      "latest_fetch_time": "2026-03-17T15:00:58.002083",
+      "latest_data_time": "2026-03-17T06:59:00+00:00",
+      "status": "fresh"
+    },
+    {
+      "type": "stock",
+      "market": "hk",
+      "code": "00001",
+      "name": "长和",
+      "periods": {
+        "1d": {
+          "last_fetch_time": "2026-03-16T16:18:20.123023",
+          "last_data_time": "2026-03-16T00:00:00",
+          "total_records": 19606
+        }
+      },
+      "period_count": 1,
+      "total_records": 19606,
+      "latest_fetch_time": "2026-03-16T16:18:20.123023",
+      "latest_data_time": "2026-03-16T00:00:00",
+      "status": "fresh"
+    },
+    {
+      "type": "stock",
+      "market": "hk",
+      "code": "00002",
+      "name": "中电控股",
+      "periods": {
+        "1d": {
+          "last_fetch_time": "2026-03-16T16:18:20.431054",
+          "last_data_time": "2026-03-16T00:00:00",
+          "total_records": 19390
+        }
+      },
+      "period_count": 1,
+      "total_records": 19390,
+      "latest_fetch_time": "2026-03-16T16:18:20.431054",
+      "latest_data_time": "2026-03-16T00:00:00",
+      "status": "fresh"
+    },
+    {
+      "type": "stock",
+      "market": "hk",
+      "code": "00700",
+      "name": "腾讯控股",
+      "periods": {
+        "1d": {
+          "last_fetch_time": "2026-03-17T15:01:13.548284",
+          "last_data_time": "2026-03-17T00:00:00",
+          "total_records": 23967
+        },
+        "1m": {
+          "last_fetch_time": "2026-03-17T15:01:00.705556",
+          "last_data_time": "2026-03-17T08:08:00+00:00",
+          "total_records": 2317
+        },
+        "5m": {
+          "last_fetch_time": "2026-03-17T15:01:03.621402",
+          "last_data_time": "2026-03-17T08:05:00+00:00",
+          "total_records": 3838
+        },
+        "15m": {
+          "last_fetch_time": "2026-03-17T15:01:05.898612",
+          "last_data_time": "2026-03-17T08:00:00+00:00",
+          "total_records": 1319
+        },
+        "30m": {
+          "last_fetch_time": "2026-03-17T15:01:08.244902",
+          "last_data_time": "2026-03-17T08:00:00+00:00",
+          "total_records": 691
+        },
+        "60m": {
+          "last_fetch_time": "2026-03-17T15:01:10.712203",
+          "last_data_time": "2026-03-17T07:30:00+00:00",
+          "total_records": 5060
+        }
+      },
+      "period_count": 6,
+      "total_records": 37192,
+      "latest_fetch_time": "2026-03-17T15:01:13.548284",
+      "latest_data_time": "2026-03-17T08:08:00+00:00",
+      "status": "fresh"
+    },
+    {
+      "type": "stock",
+      "market": "hk",
+      "code": "01810",
+      "name": "小米集团－Ｗ",
+      "periods": {
+        "1d": {
+          "last_fetch_time": "2026-03-17T15:01:12.363080",
+          "last_data_time": "2026-03-17T00:00:00",
+          "total_records": 17008
+        },
+        "1m": {
+          "last_fetch_time": "2026-03-17T15:00:59.230929",
+          "last_data_time": "2026-03-17T08:08:00+00:00",
+          "total_records": 2317
+        },
+        "5m": {
+          "last_fetch_time": "2026-03-17T15:01:02.476898",
+          "last_data_time": "2026-03-17T08:05:00+00:00",
+          "total_records": 3837
+        },
+        "15m": {
+          "last_fetch_time": "2026-03-17T15:01:04.744655",
+          "last_data_time": "2026-03-17T08:00:00+00:00",
+          "total_records": 1317
+        },
+        "30m": {
+          "last_fetch_time": "2026-03-17T15:01:07.062912",
+          "last_data_time": "2026-03-17T08:00:00+00:00",
+          "total_records": 690
+        },
+        "60m": {
+          "last_fetch_time": "2026-03-17T15:01:09.507966",
+          "last_data_time": "2026-03-17T07:30:00+00:00",
+          "total_records": 5061
+        }
+      },
+      "period_count": 6,
+      "total_records": 30230,
+      "latest_fetch_time": "2026-03-17T15:01:12.363080",
+      "latest_data_time": "2026-03-17T08:08:00+00:00",
+      "status": "fresh"
+    }
+  ]
+}

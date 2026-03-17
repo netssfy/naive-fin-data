@@ -7,8 +7,10 @@
 - A 股与港股分别提供单标的抓取和全量抓取函数
 - 全量抓取支持周期参数：`1m,5m,15m,30m,60m,1d`
 - 数据落盘路径：`data/{type}/{market}/{code}/{period}/{yyyyMMdd}.parquet`
-- 行情 parquet 列名归一化为英文：`timestamp,open,high,low,close,adj_close,volume,code`\n- 每次抓取后会更新 `data/{type}/{market}/{code}/status.json`（`last_fetch_time`、`last_data_time`、累计 `total_records`）
+- 行情 parquet 列名归一化为英文：`timestamp,open,high,low,close,adj_close,volume,code`
+- 每次抓取后会更新 `data/{type}/{market}/{code}/status.json`（按 `period` 维度保存）
 - 股票代码列表导出路径：`data/{type}/{market}/code.jsonl`（存在则按 code 更新）
+- GitHub Pages 看板：`docs/` 静态页面 + `docs/status-data.json`
 
 ## 安装
 ```bash
@@ -34,6 +36,9 @@ PYTHONPATH=src python -m naive_fin_data.cli codes-a --output-root data
 
 # 导出全部港股代码
 PYTHONPATH=src python -m naive_fin_data.cli codes-hk --output-root data
+
+# 生成 GitHub Pages 看板数据
+python scripts/build_status_page_data.py
 ```
 
 ## 测试
@@ -43,12 +48,14 @@ pip install -r requirements-dev.txt
 PYTHONPATH=src pytest -q -m integration
 ```
 
-## GitHub Action
-工作流文件：`.github/workflows/daily-fetch.yml`
+## GitHub Actions
+- 抓取工作流：`.github/workflows/daily-fetch.yml`
+  - 每天 UTC `22:00`（北京时间次日 `06:00`）自动执行
+  - 当前固定抓取标的
+    - A 股：`000725`
+    - 港股：`1810`、`0700`
+  - 抓取周期：`1m,5m,15m,30m,60m,1d`
+  - 会自动执行 `python scripts/build_status_page_data.py` 更新页面数据
 
-- 每天 UTC `22:00`（北京时间次日 `06:00`）自动执行
-- 对 A 股与港股分别抓取周期：`1m,5m,15m,30m,60m,1d`
-- `workflow_dispatch` 支持可选输入 `limit`；不传则全量抓取
-- 抓取完成后会 `git add data` 并推送到当前分支
-
-
+- 页面部署：`.github/workflows/deploy-pages.yml`
+  - 当 `docs/**` 变更时自动部署 GitHub Pages
