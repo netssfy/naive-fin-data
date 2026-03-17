@@ -2,11 +2,6 @@
 
 on:
   workflow_dispatch:
-    inputs:
-      limit:
-        description: "Optional symbol count limit per market and period (empty means full)"
-        required: false
-        type: string
   schedule:
     # 22:00 UTC = 06:00 Asia/Shanghai
     - cron: "0 22 * * *"
@@ -33,38 +28,34 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run full fetch A-share for all periods
+      - name: Fetch A-share selected symbols for all periods
         env:
           PYTHONPATH: src
-          INPUT_LIMIT: ${{ github.event.inputs.limit }}
         run: |
           set -e
           PERIODS=("1m" "5m" "15m" "30m" "60m" "1d")
-          LIMIT_ARG=""
-          if [ -n "$INPUT_LIMIT" ]; then
-            LIMIT_ARG="--limit $INPUT_LIMIT"
-          fi
+          CODES=("000725")
 
           for PERIOD in "${PERIODS[@]}"; do
-            echo "Fetching A-share period=${PERIOD} limit=${INPUT_LIMIT:-full}"
-            python -m naive_fin_data.cli full-a --type stock --period "$PERIOD" --output-root data $LIMIT_ARG
+            for CODE in "${CODES[@]}"; do
+              echo "Fetching A-share code=${CODE} period=${PERIOD}"
+              python -m naive_fin_data.cli single-a --type stock --code "$CODE" --period "$PERIOD" --output-root data
+            done
           done
 
-      - name: Run full fetch HK for all periods
+      - name: Fetch HK selected symbols for all periods
         env:
           PYTHONPATH: src
-          INPUT_LIMIT: ${{ github.event.inputs.limit }}
         run: |
           set -e
           PERIODS=("1m" "5m" "15m" "30m" "60m" "1d")
-          LIMIT_ARG=""
-          if [ -n "$INPUT_LIMIT" ]; then
-            LIMIT_ARG="--limit $INPUT_LIMIT"
-          fi
+          CODES=("1810" "0700")
 
           for PERIOD in "${PERIODS[@]}"; do
-            echo "Fetching HK period=${PERIOD} limit=${INPUT_LIMIT:-full}"
-            python -m naive_fin_data.cli full-hk --type stock --period "$PERIOD" --output-root data $LIMIT_ARG
+            for CODE in "${CODES[@]}"; do
+              echo "Fetching HK code=${CODE} period=${PERIOD}"
+              python -m naive_fin_data.cli single-hk --type stock --code "$CODE" --period "$PERIOD" --output-root data
+            done
           done
 
       - name: Commit data updates
@@ -79,4 +70,3 @@ jobs:
             git commit -m "chore(data): daily fetch"
             git push origin HEAD:${{ github.ref_name }}
           fi
-
