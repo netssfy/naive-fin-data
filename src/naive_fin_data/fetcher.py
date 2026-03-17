@@ -109,23 +109,44 @@ def _update_status(df: pd.DataFrame, target: FetchTarget, output_root: Path | st
     status_dir.mkdir(parents=True, exist_ok=True)
     status_file = status_dir / "status.json"
 
-    total_records = int(len(df))
+    current_period = target.period
+    period_records = int(len(df))
     status: dict[str, object] = {}
     if status_file.exists():
         try:
             status = json.loads(status_file.read_text(encoding="utf-8"))
-            prev_total = int(status.get("total_records", 0))
-            total_records += prev_total
         except Exception:
             status = {}
 
-    status["last_fetch_time"] = datetime.now().isoformat()
-    status["last_data_time"] = _extract_last_data_time(df)
-    status["total_records"] = total_records
     status["code"] = target.code
     status["market"] = target.market
     status["type"] = target.type
-    status["last_period"] = target.period
+
+    periods = status.get("periods", {})
+    if not isinstance(periods, dict):
+        periods = {}
+
+    # Backward compatibility: migrate legacy flat fields into the period bucket.
+    legacy_period = str(status.get("last_period", "")).strip().lower()
+    if legacy_period and legacy_period not in periods:
+        legacy_total = int(status.get("total_records", 0) or 0)
+        periods[legacy_period] = {
+            "last_fetch_time": status.get("last_fetch_time"),
+            "last_data_time": status.get("last_data_time"),
+            "total_records": legacy_total,
+        }
+
+    period_status = periods.get(current_period, {})
+    if not isinstance(period_status, dict):
+        period_status = {}
+
+    prev_period_total = int(period_status.get("total_records", 0) or 0)
+    period_status["last_fetch_time"] = datetime.now().isoformat()
+    period_status["last_data_time"] = _extract_last_data_time(df)
+    period_status["total_records"] = prev_period_total + period_records
+
+    periods[current_period] = period_status
+    status["periods"] = periods
 
     status_file.write_text(
         json.dumps(status, ensure_ascii=False, indent=2),
