@@ -5,5 +5,37 @@
   "code": "00700",
   "market": "hk",
   "type": "stock",
-  "last_period": "1d"
+  "last_period": "1d",
+  "periods": {
+    "1d": {
+      "last_fetch_time": "2026-03-17T15:01:13.548284",
+      "last_data_time": "2026-03-17T00:00:00",
+      "total_records": 23967
+    },
+    "1m": {
+      "last_fetch_time": "2026-03-17T15:01:00.705556",
+      "last_data_time": "2026-03-17T08:08:00+00:00",
+      "total_records": 2317
+    },
+    "5m": {
+      "last_fetch_time": "2026-03-17T15:01:03.621402",
+      "last_data_time": "2026-03-17T08:05:00+00:00",
+      "total_records": 3838
+    },
+    "15m": {
+      "last_fetch_time": "2026-03-17T15:01:05.898612",
+      "last_data_time": "2026-03-17T08:00:00+00:00",
+      "total_records": 1319
+    },
+    "30m": {
+      "last_fetch_time": "2026-03-17T15:01:08.244902",
+      "last_data_time": "2026-03-17T08:00:00+00:00",
+      "total_records": 691
+    },
+    "60m": {
+      "last_fetch_time": "2026-03-17T15:01:10.712203",
+      "last_data_time": "2026-03-17T07:30:00+00:00",
+      "total_records": 5060
+    }
+  }
 }
