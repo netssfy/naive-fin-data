@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.css?v=20260318-2">
 </head>
 <body>
   <div class="bg-layer bg-layer-a"></div>
@@ -16,42 +16,43 @@
   <main class="container">
     <section class="hero">
       <p class="eyebrow">NAIVE FIN DATA</p>
-      <h1>抓取状态看板</h1>
-      <p class="subtitle">基于最新 status.json 展示标的级与 period 级抓取状态（UTC+8）。</p>
+      <h1>Status Dashboard</h1>
+      <p class="subtitle">Based on latest status.json with symbol-level and period-level status (UTC+8).</p>
       <div class="metrics" id="metrics"></div>
     </section>
 
     <section class="controls">
       <div class="control-block">
-        <div class="control-label">市场</div>
+        <div class="control-label">Market</div>
         <div class="chips" id="marketFilters"></div>
       </div>
       <div class="control-block">
-        <div class="control-label">周期</div>
+        <div class="control-label">Period</div>
         <div class="chips" id="periodFilters"></div>
       </div>
-      <input id="searchInput" class="search" type="search" placeholder="搜索代码或名称，例如 000725 / 腾讯" />
+      <input id="searchInput" class="search" type="search" placeholder="Search code or name, e.g. 000725 / Tencent" />
     </section>
 
     <section class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>市场</th>
-            <th>代码 / 名称</th>
-            <th>状态</th>
-            <th>累计记录</th>
-            <th>最新抓取</th>
-            <th>最新数据时间</th>
-            <th>周期明细</th>
+            <th>Market</th>
+            <th>Code / Name</th>
+            <th>Status</th>
+            <th>Total Records</th>
+            <th>Latest Fetch</th>
+            <th>Latest Data</th>
+            <th>Period Details</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
       </table>
-      <p id="emptyState" class="empty hidden">没有匹配的数据。</p>
+      <p id="emptyState" class="empty hidden">No matched data.</p>
     </section>
   </main>
 
-  <script src="./app.js"></script>
+  <script src="./app.js?v=20260318-2"></script>
 </body>
 </html>
+

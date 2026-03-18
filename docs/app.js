@@ -6,9 +6,9 @@ const state = {
 };
 
 const marketLabels = {
-  all: "全部",
-  cn: "A股",
-  hk: "港股",
+  all: "All",
+  cn: "CN",
+  hk: "HK",
 };
 
 function formatTime(value) {
@@ -26,10 +26,10 @@ function formatNumber(value) {
 }
 
 function makeStatusLabel(code) {
-  if (code === "fresh") return "最新";
-  if (code === "stale") return "延迟";
-  if (code === "old") return "过旧";
-  return "未知";
+  if (code === "fresh") return "latest";
+  if (code === "stale") return "stale";
+  if (code === "old") return "old";
+  return "unknown";
 }
 
 function periodOrder(period) {
@@ -53,11 +53,11 @@ function renderMetrics(generatedAt, items) {
   const freshCount = items.filter((x) => x.status === "fresh").length;
 
   const cards = [
-    { label: "标的数量", value: formatNumber(items.length) },
-    { label: "周期桶总数", value: formatNumber(periodCount) },
-    { label: "累计记录", value: formatNumber(totalRecords) },
-    { label: "最新状态数量", value: formatNumber(freshCount) },
-    { label: "页面数据更新时间", value: formatTime(generatedAt) },
+    { label: "Symbols", value: formatNumber(items.length) },
+    { label: "Period Buckets", value: formatNumber(periodCount) },
+    { label: "Total Records", value: formatNumber(totalRecords) },
+    { label: "Fresh Symbols", value: formatNumber(freshCount) },
+    { label: "Generated At", value: formatTime(generatedAt) },
   ];
 
   metrics.innerHTML = cards
@@ -91,7 +91,7 @@ function renderPeriodFilters(items) {
   const chips = ["all", ...periods]
     .map((period) => {
       const isActive = period === state.period ? "active" : "";
-      const label = period === "all" ? "全部周期" : period;
+      const label = period === "all" ? "All Periods" : period;
       return `<button class="chip ${isActive}" data-period="${period}">${label}</button>`;
     })
     .join("");
@@ -121,7 +121,7 @@ function filteredItems() {
   });
 }
 
-function renderPeriodDetails(item) {
+function renderPeriodCards(item) {
   const entries = Object.entries(item.periods || {})
     .sort((a, b) => periodOrder(a[0]) - periodOrder(b[0]) || a[0].localeCompare(b[0]));
 
@@ -137,12 +137,21 @@ function renderPeriodDetails(item) {
       return `
         <article class="period-card">
           <div class="period-head">${period}</div>
-          <div class="period-row"><span>记录数</span><strong>${total}</strong></div>
-          <div class="period-row"><span>抓取</span><time>${fetchTime}</time></div>
-          <div class="period-row"><span>数据</span><time>${dataTime}</time></div>
+          <div class="period-row"><span>records</span><strong>${total}</strong></div>
+          <div class="period-row"><span>fetch</span><time>${fetchTime}</time></div>
+          <div class="period-row"><span>data</span><time>${dataTime}</time></div>
         </article>`;
     })
     .join("")}</div>`;
+}
+
+function renderPeriodDetails(item) {
+  const count = Object.keys(item.periods || {}).length;
+  return `
+    <details class="period-collapse">
+      <summary><span>${count} periods</span><span class="caret"></span></summary>
+      ${renderPeriodCards(item)}
+    </details>`;
 }
 
 function renderTable() {
@@ -207,7 +216,7 @@ async function init() {
 init().catch((err) => {
   document.getElementById("tableBody").innerHTML = `
     <tr>
-      <td colspan="7">加载失败：${err.message}</td>
+      <td colspan="7">Load failed: ${err.message}</td>
     </tr>
   `;
 });
