@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -16,13 +16,20 @@
   <main class="container">
     <section class="hero">
       <p class="eyebrow">NAIVE FIN DATA</p>
-      <h1>抓取指标与状态看板</h1>
-      <p class="subtitle">展示当前已抓取标的、周期覆盖与最新抓取状态。</p>
+      <h1>抓取状态看板</h1>
+      <p class="subtitle">基于最新 status.json 展示标的级与 period 级抓取状态（UTC+8）。</p>
       <div class="metrics" id="metrics"></div>
     </section>
 
     <section class="controls">
-      <div class="chips" id="marketFilters"></div>
+      <div class="control-block">
+        <div class="control-label">市场</div>
+        <div class="chips" id="marketFilters"></div>
+      </div>
+      <div class="control-block">
+        <div class="control-label">周期</div>
+        <div class="chips" id="periodFilters"></div>
+      </div>
       <input id="searchInput" class="search" type="search" placeholder="搜索代码或名称，例如 000725 / 腾讯" />
     </section>
 
@@ -33,10 +40,10 @@
             <th>市场</th>
             <th>代码 / 名称</th>
             <th>状态</th>
-            <th>周期覆盖</th>
             <th>累计记录</th>
             <th>最新抓取</th>
             <th>最新数据时间</th>
+            <th>周期明细</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
