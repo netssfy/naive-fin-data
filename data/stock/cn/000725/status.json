@@ -1,0 +1,41 @@
+{
+  "last_fetch_time": "2026-03-17T14:41:16.524700",
+  "last_data_time": "2026-03-17T00:00:00",
+  "total_records": 18704,
+  "code": "000725",
+  "market": "cn",
+  "type": "stock",
+  "last_period": "1d",
+  "periods": {
+    "1d": {
+      "last_fetch_time": "2026-03-17T22:28:39.254616",
+      "last_data_time": "2026-03-17T00:00:00",
+      "total_records": 31108
+    },
+    "1m": {
+      "last_fetch_time": "2026-03-17T22:28:32.459681",
+      "last_data_time": "2026-03-17T06:59:00+00:00",
+      "total_records": 4620
+    },
+    "5m": {
+      "last_fetch_time": "2026-03-17T22:28:33.815630",
+      "last_data_time": "2026-03-17T06:55:00+00:00",
+      "total_records": 7758
+    },
+    "15m": {
+      "last_fetch_time": "2026-03-17T22:28:35.063492",
+      "last_data_time": "2026-03-17T06:45:00+00:00",
+      "total_records": 2588
+    },
+    "30m": {
+      "last_fetch_time": "2026-03-17T22:28:36.182435",
+      "last_data_time": "2026-03-17T06:30:00+00:00",
+      "total_records": 1296
+    },
+    "60m": {
+      "last_fetch_time": "2026-03-17T22:28:37.815796",
+      "last_data_time": "2026-03-17T06:30:00+00:00",
+      "total_records": 8742
+    }
+  }
+}
