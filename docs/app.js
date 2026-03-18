@@ -1,7 +1,6 @@
 const state = {
   allItems: [],
   market: "all",
-  period: "all",
   keyword: "",
 };
 
@@ -36,14 +35,6 @@ function periodOrder(period) {
   const order = ["1m", "5m", "15m", "30m", "60m", "1d", "daily", "1w", "weekly", "1mo", "monthly"];
   const idx = order.indexOf(period);
   return idx >= 0 ? idx : 999;
-}
-
-function collectPeriods(items) {
-  const set = new Set();
-  items.forEach((item) => {
-    Object.keys(item.periods || {}).forEach((p) => set.add(p));
-  });
-  return Array.from(set).sort((a, b) => periodOrder(a) - periodOrder(b) || a.localeCompare(b));
 }
 
 function renderMetrics(generatedAt, items) {
@@ -86,34 +77,10 @@ function renderMarketFilters(items) {
   });
 }
 
-function renderPeriodFilters(items) {
-  const periods = collectPeriods(items);
-  const chips = ["all", ...periods]
-    .map((period) => {
-      const isActive = period === state.period ? "active" : "";
-      const label = period === "all" ? "All Periods" : period;
-      return `<button class="chip ${isActive}" data-period="${period}">${label}</button>`;
-    })
-    .join("");
-
-  const filters = document.getElementById("periodFilters");
-  filters.innerHTML = chips;
-  filters.querySelectorAll(".chip").forEach((node) => {
-    node.addEventListener("click", () => {
-      state.period = node.dataset.period;
-      renderPeriodFilters(state.allItems);
-      renderTable();
-    });
-  });
-}
-
 function filteredItems() {
   const keyword = state.keyword.trim().toLowerCase();
   return state.allItems.filter((item) => {
     if (state.market !== "all" && item.market !== state.market) return false;
-    if (state.period !== "all" && !Object.prototype.hasOwnProperty.call(item.periods || {}, state.period)) {
-      return false;
-    }
     if (!keyword) return true;
     const code = String(item.code || "").toLowerCase();
     const name = String(item.name || "").toLowerCase();
@@ -204,7 +171,6 @@ async function init() {
 
   renderMetrics(payload.generated_at, items);
   renderMarketFilters(items);
-  renderPeriodFilters(items);
   renderTable();
 
   document.getElementById("searchInput").addEventListener("input", (event) => {
