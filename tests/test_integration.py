@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -14,8 +14,10 @@ from naive_fin_data.fetcher import (
 )
 
 
+UTC8 = timezone(timedelta(hours=8))
+
 def _today() -> str:
-    return datetime.now().strftime("%Y%m%d")
+    return datetime.now(UTC8).strftime("%Y%m%d")
 
 
 def _run_or_skip(callable_obj, *args, **kwargs):

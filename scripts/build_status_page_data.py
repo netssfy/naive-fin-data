@@ -1,7 +1,7 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA_ROOT = ROOT / "data"
 DOCS_ROOT = ROOT / "docs"
 OUTPUT_FILE = DOCS_ROOT / "status-data.json"
+
+UTC8 = timezone(timedelta(hours=8))
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -42,7 +44,13 @@ def _parse_iso_time(value: Any) -> datetime | None:
     if not value:
         return None
     try:
-        return datetime.fromisoformat(str(value))
+        text = str(value)
+        if text.endswith("Z"):
+            text = f"{text[:-1]}+00:00"
+        dt = datetime.fromisoformat(text)
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=UTC8)
+        return dt.astimezone(UTC8)
     except Exception:
         return None
 
@@ -60,7 +68,7 @@ def _status_level(latest_fetch: datetime | None) -> str:
     latest_ts = _time_score(latest_fetch)
     if latest_ts is None:
         return "unknown"
-    age_seconds = datetime.now().timestamp() - latest_ts
+    age_seconds = datetime.now(UTC8).timestamp() - latest_ts
     if age_seconds <= 36 * 3600:
         return "fresh"
     if age_seconds <= 4 * 24 * 3600:
@@ -99,7 +107,7 @@ def build() -> dict[str, Any]:
     stock_root = DATA_ROOT / "stock"
     if not stock_root.exists():
         return {
-            "generated_at": datetime.now().isoformat(),
+            "generated_at": datetime.now(UTC8).isoformat(),
             "items": items,
         }
 
@@ -147,7 +155,7 @@ def build() -> dict[str, Any]:
             items.append(item)
 
     return {
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": datetime.now(UTC8).isoformat(),
         "items": items,
     }
 
@@ -162,4 +170,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

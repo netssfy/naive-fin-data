@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -36,8 +36,44 @@ def test_update_status_grouped_by_period(tmp_path: Path) -> None:
     assert status["market"] == "cn"
     assert status["type"] == "stock"
     assert "periods" in status
+    # First fetch has 2 rows, second fetch overlaps and only adds one new timestamp.
+    assert status["periods"]["1d"]["total_records"] == 3
+    assert status["periods"]["1d"]["last_fetch_time"].endswith("+08:00")
+    assert status["periods"]["1d"]["last_data_time"].endswith("+08:00")
+
+
+def test_update_status_initializes_total_records_from_period_parquets(tmp_path: Path) -> None:
+    period_dir = tmp_path / "stock" / "cn" / "000725" / "1d"
+    period_dir.mkdir(parents=True)
+
+    _make_df(2).to_parquet(period_dir / "20260317.parquet", index=False)
+    _make_df(3).to_parquet(period_dir / "20260318.parquet", index=False)
+
+    status_dir = tmp_path / "stock" / "cn" / "000725"
+    status_file = status_dir / "status.json"
+    status_file.write_text(
+        json.dumps(
+            {
+                "code": "000725",
+                "market": "cn",
+                "type": "stock",
+                "periods": {
+                    "1d": {
+                        "last_fetch_time": "2026-03-17T10:00:00+08:00",
+                        "last_data_time": "2026-03-17T00:00:00+08:00"
+                    }
+                }
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    _update_status(df=_make_df(3), target=FetchTarget(type="stock", market="cn", code="000725", period="1d"), output_root=tmp_path)
+
+    status = json.loads(status_file.read_text(encoding="utf-8"))
     assert status["periods"]["1d"]["total_records"] == 5
-    assert status["periods"]["1d"]["last_data_time"] is not None
 
 
 def test_update_status_migrates_legacy_flat_schema(tmp_path: Path) -> None:

@@ -1,7 +1,7 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Iterable
 import time
@@ -11,18 +11,21 @@ import pandas as pd
 import yfinance as yf
 import json
 
+UTC8 = timezone(timedelta(hours=8))
+
+
 INTERVAL_CONFIG = {
-    "1m": {"interval": "1m", "period": "7d"},
-    "5m": {"interval": "5m", "period": "60d"},
-    "15m": {"interval": "15m", "period": "60d"},
-    "30m": {"interval": "30m", "period": "60d"},
-    "60m": {"interval": "60m", "period": "730d"},
-    "1d": {"interval": "1d", "period": "max"},
-    "daily": {"interval": "1d", "period": "max"},
-    "1w": {"interval": "1wk", "period": "max"},
-    "weekly": {"interval": "1wk", "period": "max"},
-    "1mo": {"interval": "1mo", "period": "max"},
-    "monthly": {"interval": "1mo", "period": "max"},
+    "1m": {"interval": "1m", "period": "7d", "max_span_days": 7},
+    "5m": {"interval": "5m", "period": "60d", "max_span_days": 60},
+    "15m": {"interval": "15m", "period": "60d", "max_span_days": 60},
+    "30m": {"interval": "30m", "period": "60d", "max_span_days": 60},
+    "60m": {"interval": "60m", "period": "730d", "max_span_days": 730},
+    "1d": {"interval": "1d", "period": "max", "max_span_days": 3650},
+    "daily": {"interval": "1d", "period": "max", "max_span_days": 3650},
+    "1w": {"interval": "1wk", "period": "max", "max_span_days": 3650},
+    "weekly": {"interval": "1wk", "period": "max", "max_span_days": 3650},
+    "1mo": {"interval": "1mo", "period": "max", "max_span_days": 3650},
+    "monthly": {"interval": "1mo", "period": "max", "max_span_days": 3650},
 }
 
 
@@ -35,14 +38,14 @@ class FetchTarget:
 
 
 def _today_str() -> str:
-    return datetime.now().strftime("%Y%m%d")
+    return datetime.now(UTC8).strftime("%Y%m%d")
 
 
 def _normalize_period(period: str) -> str:
     return str(period).strip().lower()
 
 
-def _get_interval_config(period: str) -> dict[str, str]:
+def _get_interval_config(period: str) -> dict[str, object]:
     key = _normalize_period(period)
     if key not in INTERVAL_CONFIG:
         raise ValueError(f"unsupported period: {period}")
@@ -100,8 +103,117 @@ def _extract_last_data_time(df: pd.DataFrame) -> str | None:
     ts = pd.to_datetime(df["timestamp"], errors="coerce").dropna()
     if ts.empty:
         return None
+    if ts.dt.tz is None:
+        ts = ts.dt.tz_localize(UTC8)
+    else:
+        ts = ts.dt.tz_convert(UTC8)
     return ts.max().isoformat()
 
+
+def _parse_status_time(value: object) -> datetime | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if text.endswith("Z"):
+        text = f"{text[:-1]}+00:00"
+    try:
+        dt = datetime.fromisoformat(text)
+    except Exception:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC8)
+    return dt.astimezone(UTC8)
+
+
+def _count_new_records(df: pd.DataFrame, last_data_time: object) -> int:
+    if "timestamp" not in df.columns or df.empty:
+        return 0
+    ts = pd.to_datetime(df["timestamp"], errors="coerce").dropna()
+    if ts.empty:
+        return 0
+    if ts.dt.tz is None:
+        ts = ts.dt.tz_localize(UTC8)
+    else:
+        ts = ts.dt.tz_convert(UTC8)
+
+    prev_dt = _parse_status_time(last_data_time)
+    if prev_dt is None:
+        return int(len(ts))
+    return int((ts > pd.Timestamp(prev_dt)).sum())
+
+
+def _count_period_parquet_records(output_root: Path | str, target: FetchTarget) -> int:
+    period_dir = Path(output_root) / target.type / target.market / target.code / target.period
+    if not period_dir.exists():
+        return 0
+
+    total = 0
+    for parquet_file in period_dir.glob("*.parquet"):
+        try:
+            total += int(len(pd.read_parquet(parquet_file)))
+        except Exception:
+            continue
+    return total
+
+
+def _load_last_data_time_from_status(output_root: Path | str, target: FetchTarget) -> datetime | None:
+    status_file = Path(output_root) / target.type / target.market / target.code / "status.json"
+    if not status_file.exists():
+        return None
+    try:
+        status = json.loads(status_file.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    periods = status.get("periods")
+    if not isinstance(periods, dict):
+        return None
+    period_status = periods.get(target.period)
+    if not isinstance(period_status, dict):
+        return None
+    return _parse_status_time(period_status.get("last_data_time"))
+
+
+def _filter_rows_after(df: pd.DataFrame, last_data_time: datetime | None) -> pd.DataFrame:
+    if last_data_time is None or df.empty or "timestamp" not in df.columns:
+        return df
+    ts = pd.to_datetime(df["timestamp"], errors="coerce")
+    valid = ts.notna()
+    if not valid.any():
+        return df.iloc[0:0]
+    ts = ts[valid]
+    if ts.dt.tz is None:
+        ts = ts.dt.tz_localize(UTC8)
+    else:
+        ts = ts.dt.tz_convert(UTC8)
+    cutoff = pd.Timestamp(last_data_time)
+    keep = pd.Series(False, index=df.index)
+    keep.loc[ts.index] = ts > cutoff
+    return df[keep].reset_index(drop=True)
+
+
+def _to_yf_time(dt: datetime) -> datetime:
+    return dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def _download_chunk_with_retry(symbol: str, interval: str, start_time: datetime, end_time: datetime) -> pd.DataFrame:
+    retries = 4
+    for attempt in range(retries):
+        df = yf.download(
+            tickers=symbol,
+            start=_to_yf_time(start_time),
+            end=_to_yf_time(end_time),
+            interval=interval,
+            auto_adjust=False,
+            progress=False,
+            threads=False,
+        )
+        if not df.empty:
+            return df
+        if attempt < retries - 1:
+            time.sleep(2 * (attempt + 1))
+    return pd.DataFrame()
 
 def _update_status(df: pd.DataFrame, target: FetchTarget, output_root: Path | str) -> Path:
     output_root = Path(output_root)
@@ -110,7 +222,6 @@ def _update_status(df: pd.DataFrame, target: FetchTarget, output_root: Path | st
     status_file = status_dir / "status.json"
 
     current_period = target.period
-    period_records = int(len(df))
     status: dict[str, object] = {}
     if status_file.exists():
         try:
@@ -140,10 +251,17 @@ def _update_status(df: pd.DataFrame, target: FetchTarget, output_root: Path | st
     if not isinstance(period_status, dict):
         period_status = {}
 
+    has_total_records = "total_records" in period_status
     prev_period_total = int(period_status.get("total_records", 0) or 0)
-    period_status["last_fetch_time"] = datetime.now().isoformat()
+    prev_last_data_time = period_status.get("last_data_time")
+    new_records = _count_new_records(df, prev_last_data_time)
+
+    period_status["last_fetch_time"] = datetime.now(UTC8).isoformat()
     period_status["last_data_time"] = _extract_last_data_time(df)
-    period_status["total_records"] = prev_period_total + period_records
+    if has_total_records:
+        period_status["total_records"] = prev_period_total + new_records
+    else:
+        period_status["total_records"] = _count_period_parquet_records(output_root, target)
 
     periods[current_period] = period_status
     status["periods"] = periods
@@ -311,13 +429,43 @@ def _download_with_yfinance(symbol: str, period: str) -> pd.DataFrame:
         )
         if not df.empty:
             return df
-
         if attempt < retries - 1:
-            # Backoff for Yahoo transient throttling.
-            time.sleep(3 * (attempt + 1))
-
+            time.sleep(2 * (attempt + 1))
     return pd.DataFrame()
 
+
+def _download_with_yfinance_incremental(symbol: str, period: str, last_data_time: datetime | None) -> pd.DataFrame:
+    if last_data_time is None:
+        return _download_with_yfinance(symbol=symbol, period=period)
+
+    cfg = _get_interval_config(period)
+    max_span_days = int(cfg.get("max_span_days", 7) or 7)
+    now_time = datetime.now(UTC8)
+    cursor = last_data_time.astimezone(UTC8)
+    if cursor >= now_time:
+        return pd.DataFrame()
+
+    chunks: list[pd.DataFrame] = []
+    overlap = timedelta(minutes=1)
+    while cursor < now_time:
+        chunk_end = min(cursor + timedelta(days=max_span_days), now_time)
+        chunk = _download_chunk_with_retry(
+            symbol=symbol,
+            interval=cfg["interval"],
+            start_time=cursor - overlap,
+            end_time=chunk_end + overlap,
+        )
+        if not chunk.empty:
+            chunks.append(chunk)
+        cursor = chunk_end
+        time.sleep(0.2)
+
+    if not chunks:
+        return pd.DataFrame()
+
+    out = pd.concat(chunks)
+    out = out[~out.index.duplicated(keep="last")]
+    return out.sort_index()
 
 def fetch_single_a_share(
     code: str,
@@ -332,10 +480,16 @@ def fetch_single_a_share(
     norm_period = _normalize_period(period)
     target = FetchTarget(type=type_name, market=market, code=norm_code, period=norm_period)
 
-    df = _download_with_yfinance(symbol=_to_yf_a_symbol(norm_code), period=norm_period)
+    last_data_time = _load_last_data_time_from_status(output_root=output_root, target=target)
+    df = _download_with_yfinance_incremental(
+        symbol=_to_yf_a_symbol(norm_code),
+        period=norm_period,
+        last_data_time=last_data_time,
+    )
     df = _normalize_price_df(df, norm_code)
+    df = _filter_rows_after(df, last_data_time)
     if df.empty:
-        raise ValueError(f"no data returned for {norm_code}")
+        raise ValueError(f"no new data returned for {norm_code}")
 
     output_file = _save_parquet(df=df, target=target, output_root=output_root)
     _update_status(df=df, target=target, output_root=output_root)
@@ -344,7 +498,7 @@ def fetch_single_a_share(
 
 def list_all_a_share_codes() -> list[str]:
     df = ak.stock_info_a_code_name()
-    return _get_codes_from_df(df, ["code", "代码"], zfill=6)
+    return _get_codes_from_df(df, ["code", "\u4ee3\u7801"], zfill=6)
 
 
 def fetch_all_a_share(
@@ -392,10 +546,16 @@ def fetch_single_hk(
     norm_period = _normalize_period(period)
     target = FetchTarget(type=type_name, market=market, code=norm_code, period=norm_period)
 
-    df = _download_with_yfinance(symbol=_to_yf_hk_symbol(norm_code), period=norm_period)
+    last_data_time = _load_last_data_time_from_status(output_root=output_root, target=target)
+    df = _download_with_yfinance_incremental(
+        symbol=_to_yf_hk_symbol(norm_code),
+        period=norm_period,
+        last_data_time=last_data_time,
+    )
     df = _normalize_price_df(df, norm_code)
+    df = _filter_rows_after(df, last_data_time)
     if df.empty:
-        raise ValueError(f"no data returned for {norm_code}")
+        raise ValueError(f"no new data returned for {norm_code}")
 
     output_file = _save_parquet(df=df, target=target, output_root=output_root)
     _update_status(df=df, target=target, output_root=output_root)
@@ -405,10 +565,10 @@ def fetch_single_hk(
 def list_all_hk_codes() -> list[str]:
     try:
         spot_df = ak.stock_hk_spot_em()
-        return _get_codes_from_df(spot_df, ["代码", "code", "symbol"], zfill=5)
+        return _get_codes_from_df(spot_df, ["\u4ee3\u7801", "code", "symbol"], zfill=5)
     except Exception:
         basic_df = ak.stock_hk_spot()
-        return _get_codes_from_df(basic_df, ["symbol", "代码", "code"], zfill=5)
+        return _get_codes_from_df(basic_df, ["symbol", "\u4ee3\u7801", "code"], zfill=5)
 
 
 def fetch_all_hk(
@@ -449,7 +609,12 @@ def export_a_share_code_list(
     market: str = "cn",
 ) -> Path:
     df = ak.stock_info_a_code_name()
-    out = _get_code_name_df(df, ["code", "代码"], ["中文名称", "name", "名称", "英文名称"], zfill=6)
+    out = _get_code_name_df(
+        df,
+        ["code", "\u4ee3\u7801"],
+        ["\u4e2d\u6587\u540d\u79f0", "name", "\u540d\u79f0", "\u82f1\u6587\u540d\u79f0"],
+        zfill=6,
+    )
     out["market"] = market
     return _save_code_jsonl(out, output_root=output_root, type_name=type_name, market=market)
 
@@ -461,18 +626,28 @@ def export_hk_code_list(
 ) -> Path:
     try:
         df = ak.stock_hk_spot_em()
-        out = _get_code_name_df(df, ["代码", "code", "symbol"], ["名称", "中文名称", "name", "英文名称"], zfill=5)
+        out = _get_code_name_df(
+            df,
+            ["\u4ee3\u7801", "code", "symbol"],
+            ["\u540d\u79f0", "\u4e2d\u6587\u540d\u79f0", "name", "\u82f1\u6587\u540d\u79f0"],
+            zfill=5,
+        )
     except Exception:
         df = ak.stock_hk_spot()
-        out = _get_code_name_df(df, ["symbol", "代码", "code"], ["中文名称", "name", "名称", "英文名称"], zfill=5)
+        out = _get_code_name_df(
+            df,
+            ["symbol", "\u4ee3\u7801", "code"],
+            ["\u4e2d\u6587\u540d\u79f0", "name", "\u540d\u79f0", "\u82f1\u6587\u540d\u79f0"],
+            zfill=5,
+        )
 
     if (out["name"].astype(str).str.strip() == "").any():
         try:
             patch_df = ak.stock_hk_main_board_spot_em()
             patch = _get_code_name_df(
                 patch_df,
-                ["代码", "code", "symbol"],
-                ["名称", "中文名称", "name", "英文名称"],
+                ["\u4ee3\u7801", "code", "symbol"],
+                ["\u540d\u79f0", "\u4e2d\u6587\u540d\u79f0", "name", "\u82f1\u6587\u540d\u79f0"],
                 zfill=5,
             )
             out = _merge_code_name_df(out, patch)
@@ -484,8 +659,8 @@ def export_hk_code_list(
             patch_df = ak.stock_hk_spot()
             patch = _get_code_name_df(
                 patch_df,
-                ["symbol", "代码", "code"],
-                ["中文名称", "name", "名称", "英文名称"],
+                ["symbol", "\u4ee3\u7801", "code"],
+                ["\u4e2d\u6587\u540d\u79f0", "name", "\u540d\u79f0", "\u82f1\u6587\u540d\u79f0"],
                 zfill=5,
             )
             out = _merge_code_name_df(out, patch)
@@ -550,12 +725,6 @@ def fetch_all(
         symbols=symbols,
         limit=limit,
     )
-
-
-
-
-
-
 
 
 
