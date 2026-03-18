@@ -1,0 +1,37 @@
+{
+  "code": "000725",
+  "market": "cn",
+  "type": "stock",
+  "periods": {
+    "1m": {
+      "last_fetch_time": "2026-03-18T19:24:46.135856+08:00",
+      "last_data_time": "2026-03-18T14:59:00+08:00",
+      "total_records": 2310
+    },
+    "5m": {
+      "last_fetch_time": "2026-03-18T19:24:47.293972+08:00",
+      "last_data_time": "2026-03-18T14:55:00+08:00",
+      "total_records": 3945
+    },
+    "15m": {
+      "last_fetch_time": "2026-03-18T19:24:48.358296+08:00",
+      "last_data_time": "2026-03-18T14:45:00+08:00",
+      "total_records": 1317
+    },
+    "30m": {
+      "last_fetch_time": "2026-03-18T19:24:49.435144+08:00",
+      "last_data_time": "2026-03-18T14:30:00+08:00",
+      "total_records": 659
+    },
+    "60m": {
+      "last_fetch_time": "2026-03-18T19:24:50.621782+08:00",
+      "last_data_time": "2026-03-18T14:30:00+08:00",
+      "total_records": 4377
+    },
+    "1d": {
+      "last_fetch_time": "2026-03-18T19:24:51.860755+08:00",
+      "last_data_time": "2026-03-18T00:00:00+08:00",
+      "total_records": 6203
+    }
+  }
+}

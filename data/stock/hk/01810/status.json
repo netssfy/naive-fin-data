@@ -1,0 +1,37 @@
+{
+  "code": "01810",
+  "market": "hk",
+  "type": "stock",
+  "periods": {
+    "1m": {
+      "last_fetch_time": "2026-03-18T19:24:53.068406+08:00",
+      "last_data_time": "2026-03-18T16:08:00+08:00",
+      "total_records": 2316
+    },
+    "5m": {
+      "last_fetch_time": "2026-03-18T19:24:55.378206+08:00",
+      "last_data_time": "2026-03-18T16:05:00+08:00",
+      "total_records": 3905
+    },
+    "15m": {
+      "last_fetch_time": "2026-03-18T19:24:57.555857+08:00",
+      "last_data_time": "2026-03-18T16:00:00+08:00",
+      "total_records": 1340
+    },
+    "30m": {
+      "last_fetch_time": "2026-03-18T19:24:59.774270+08:00",
+      "last_data_time": "2026-03-18T16:00:00+08:00",
+      "total_records": 700
+    },
+    "60m": {
+      "last_fetch_time": "2026-03-18T19:25:02.007067+08:00",
+      "last_data_time": "2026-03-18T15:30:00+08:00",
+      "total_records": 5064
+    },
+    "1d": {
+      "last_fetch_time": "2026-03-18T19:25:04.288964+08:00",
+      "last_data_time": "2026-03-18T00:00:00+08:00",
+      "total_records": 1894
+    }
+  }
+}
