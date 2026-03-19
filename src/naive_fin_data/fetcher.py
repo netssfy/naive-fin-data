@@ -474,7 +474,7 @@ def fetch_single_a_share(
     adjust: str = "qfq",
     type_name: str = "stock",
     market: str = "cn",
-) -> Path:
+) -> Path | None:
     del adjust
     norm_code = str(code).strip().zfill(6)
     norm_period = _normalize_period(period)
@@ -489,7 +489,7 @@ def fetch_single_a_share(
     df = _normalize_price_df(df, norm_code)
     df = _filter_rows_after(df, last_data_time)
     if df.empty:
-        raise ValueError(f"no new data returned for {norm_code}")
+        return None
 
     output_file = _save_parquet(df=df, target=target, output_root=output_root)
     _update_status(df=df, target=target, output_root=output_root)
@@ -540,7 +540,7 @@ def fetch_single_hk(
     adjust: str = "",
     type_name: str = "stock",
     market: str = "hk",
-) -> Path:
+) -> Path | None:
     del adjust
     norm_code = str(code).strip().zfill(5)
     norm_period = _normalize_period(period)
@@ -555,7 +555,7 @@ def fetch_single_hk(
     df = _normalize_price_df(df, norm_code)
     df = _filter_rows_after(df, last_data_time)
     if df.empty:
-        raise ValueError(f"no new data returned for {norm_code}")
+        return None
 
     output_file = _save_parquet(df=df, target=target, output_root=output_root)
     _update_status(df=df, target=target, output_root=output_root)
@@ -677,7 +677,7 @@ def fetch_single(
     target: FetchTarget,
     output_root: Path | str = "data",
     adjust: str = "qfq",
-) -> Path:
+) -> Path | None:
     if target.market.lower() == "hk":
         return fetch_single_hk(
             code=target.code,

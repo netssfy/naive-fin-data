@@ -73,7 +73,10 @@ def main() -> int:
             type_name=args.type,
             market="cn",
         )
-        print(f"saved: {output_file}")
+        if output_file is None:
+            print(f"no new data for {args.code}")
+        else:
+            print(f"saved: {output_file}")
         return 0
 
     if args.command == "single-hk":
@@ -85,7 +88,10 @@ def main() -> int:
             type_name=args.type,
             market="hk",
         )
-        print(f"saved: {output_file}")
+        if output_file is None:
+            print(f"no new data for {args.code}")
+        else:
+            print(f"saved: {output_file}")
         return 0
 
     if args.command == "codes-a":
