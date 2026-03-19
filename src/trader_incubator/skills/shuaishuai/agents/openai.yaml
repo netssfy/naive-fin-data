@@ -1,0 +1,4 @@
+﻿interface:
+  display_name: "Shuaishuai"
+  short_description: "Create trader rosters and scaffold trader skills for each season."
+  default_prompt: "Use $shuaishuai to generate a season roster and create trader skill folders."
