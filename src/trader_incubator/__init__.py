@@ -1,4 +1,6 @@
 from trader_incubator.exchange import Exchange, Order, SymbolRef, TradingSessionConfig, TradingStrategy
+from trader_incubator.season import Season, SeasonTraderRef
+from trader_incubator.trader import Trader
 
 __all__ = [
     "Exchange",
@@ -6,5 +8,8 @@ __all__ = [
     "SymbolRef",
     "TradingSessionConfig",
     "TradingStrategy",
+    "Season",
+    "SeasonTraderRef",
+    "Trader",
 ]
 

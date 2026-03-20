@@ -311,6 +311,15 @@ class TradingStrategy:
         symbol = SymbolRef(code=str(code).strip(), market=market, type_name=type_name)
         return exchange.place_market_order(strategy_name=self.name, symbol=symbol, side=side, quantity=quantity)
 
+    def get_position(
+        self,
+        code: str,
+        market: str = "cn",
+        type_name: str = "stock",
+    ) -> int:
+        exchange = self._require_exchange()
+        return exchange.get_position(strategy_name=self.name, code=str(code).strip(), market=market, type_name=type_name)
+
     def _require_exchange(self) -> Exchange:
         if self._exchange is None:
             raise RuntimeError("strategy is not bound to an exchange runtime")

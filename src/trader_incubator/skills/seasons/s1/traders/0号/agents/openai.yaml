@@ -1,0 +1,4 @@
+interface:
+  display_name: "0号"
+  short_description: "Trader 0号 (event-driven/swing/high-conviction) strategy executor."
+  default_prompt: "Use $0号 to analyze market data and generate signals."
