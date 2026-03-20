@@ -64,6 +64,8 @@ def test_fetch_single_a_share_prefers_akshare(monkeypatch) -> None:
     df = pd.read_parquet(output)
     assert list(df.columns) == STANDARD_COLUMNS
     assert set(df["code"].astype(str)) == {"600519"}
+    # Keep source timestamp labeling as-is (no forced left alignment shift).
+    assert pd.to_datetime(df["timestamp"]).dt.strftime("%Y-%m-%d").tolist() == ["2026-03-19", "2026-03-20"]
 
 
 def test_fetch_single_a_share_falls_back_to_yfinance(monkeypatch) -> None:
@@ -90,6 +92,11 @@ def test_fetch_single_a_share_falls_back_to_yfinance(monkeypatch) -> None:
     df = pd.read_parquet(output)
     assert list(df.columns) == STANDARD_COLUMNS
     assert set(df["code"].astype(str)) == {"000725"}
+    # yfinance timestamps should remain unchanged (no -period shift).
+    assert pd.to_datetime(df["timestamp"]).dt.strftime("%Y-%m-%d %H:%M:%S").tolist() == [
+        "2026-03-19 09:31:00",
+        "2026-03-19 09:32:00",
+    ]
 
 
 def test_fetch_single_hk_prefers_akshare(monkeypatch) -> None:
@@ -122,3 +129,5 @@ def test_fetch_single_hk_prefers_akshare(monkeypatch) -> None:
     df = pd.read_parquet(output)
     assert list(df.columns) == STANDARD_COLUMNS
     assert set(df["code"].astype(str)) == {"00700"}
+    # Keep source timestamp labeling as-is (no forced left alignment shift).
+    assert pd.to_datetime(df["timestamp"]).dt.strftime("%Y-%m-%d").tolist() == ["2026-03-19", "2026-03-20"]

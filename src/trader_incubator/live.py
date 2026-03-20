@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Sequence
 from zoneinfo import ZoneInfo
 
+import akshare as ak
 import pandas as pd
 import yfinance as yf
 
@@ -23,6 +24,14 @@ from trader_incubator.exchange import (
 
 _SUPPORTED_PERIODS = {"1m", "5m", "15m", "30m", "60m", "1d"}
 _LIVE_FETCH_PERIODS = ("1m", "5m", "15m", "30m", "60m")
+_LIVE_BAR_COLUMNS = ["timestamp", "open", "high", "low", "close", "adj_close", "volume", "code"]
+_AK_MINUTE_PERIOD_MAP = {
+    "1m": "1",
+    "5m": "5",
+    "15m": "15",
+    "30m": "30",
+    "60m": "60",
+}
 
 
 def _to_yf_symbol(symbol: SymbolRef) -> str:
@@ -39,9 +48,37 @@ def _to_yf_symbol(symbol: SymbolRef) -> str:
     return f"{raw}.BJ"
 
 
+def _empty_live_bar_df() -> pd.DataFrame:
+    return pd.DataFrame(columns=_LIVE_BAR_COLUMNS)
+
+
+def _call_akshare_with_candidates(candidates: list[tuple[str, dict[str, object]]]) -> pd.DataFrame:
+    for fn_name, kwargs in candidates:
+        fn = getattr(ak, fn_name, None)
+        if fn is None:
+            continue
+        try:
+            df = fn(**kwargs)
+        except Exception:
+            continue
+        if isinstance(df, pd.DataFrame) and not df.empty:
+            return df
+    return pd.DataFrame()
+
+
+def _normalize_timestamp_to_tz(series: pd.Series, tz: ZoneInfo) -> pd.Series:
+    ts = pd.to_datetime(series, errors="coerce")
+    if ts.empty:
+        return ts
+    if ts.dt.tz is None:
+        # Incoming source time is treated as UTC, then converted to UTC+8 target timezone.
+        return ts.dt.tz_localize("UTC").dt.tz_convert(tz)
+    return ts.dt.tz_convert(tz)
+
+
 def _normalize_realtime_df(df: pd.DataFrame, code: str, tz: ZoneInfo) -> pd.DataFrame:
     if df.empty:
-        return pd.DataFrame(columns=["timestamp", "open", "high", "low", "close", "adj_close", "volume", "code"])
+        return _empty_live_bar_df()
     out = df.copy()
     if isinstance(out.columns, pd.MultiIndex):
         out.columns = [col[0] if isinstance(col, tuple) else col for col in out.columns]
@@ -60,17 +97,152 @@ def _normalize_realtime_df(df: pd.DataFrame, code: str, tz: ZoneInfo) -> pd.Data
     for col in ["timestamp", "open", "high", "low", "close", "adj_close", "volume"]:
         if col not in out.columns:
             out[col] = pd.NA
-    out["timestamp"] = pd.to_datetime(out["timestamp"], errors="coerce")
+    out["timestamp"] = _normalize_timestamp_to_tz(out["timestamp"], tz)
     out = out.dropna(subset=["timestamp"]).reset_index(drop=True)
     if out.empty:
-        return pd.DataFrame(columns=["timestamp", "open", "high", "low", "close", "adj_close", "volume", "code"])
-    if out["timestamp"].dt.tz is None:
-        out["timestamp"] = out["timestamp"].dt.tz_localize("UTC").dt.tz_convert(tz)
-    else:
-        out["timestamp"] = out["timestamp"].dt.tz_convert(tz)
+        return _empty_live_bar_df()
     out["code"] = str(code)
-    out = out[["timestamp", "open", "high", "low", "close", "adj_close", "volume", "code"]]
+    out = out[_LIVE_BAR_COLUMNS]
     return out.sort_values("timestamp").reset_index(drop=True)
+
+
+def _normalize_akshare_realtime_df(df: pd.DataFrame, code: str, tz: ZoneInfo) -> pd.DataFrame:
+    if df.empty:
+        return _empty_live_bar_df()
+
+    out = df.copy().reset_index(drop=True)
+    rename_map = {
+        "Date": "timestamp",
+        "Datetime": "timestamp",
+        "date": "timestamp",
+        "datetime": "timestamp",
+        "日期": "timestamp",
+        "时间": "timestamp",
+        "time": "timestamp",
+        "Open": "open",
+        "open": "open",
+        "开盘": "open",
+        "High": "high",
+        "high": "high",
+        "最高": "high",
+        "Low": "low",
+        "low": "low",
+        "最低": "low",
+        "Close": "close",
+        "close": "close",
+        "收盘": "close",
+        "Adj Close": "adj_close",
+        "adj_close": "adj_close",
+        "Volume": "volume",
+        "volume": "volume",
+        "成交量": "volume",
+    }
+    out = out.rename(columns=rename_map)
+
+    for col in ["timestamp", "open", "high", "low", "close", "volume"]:
+        if col not in out.columns:
+            out[col] = pd.NA
+    if "adj_close" not in out.columns:
+        out["adj_close"] = out["close"]
+
+    out["timestamp"] = _normalize_timestamp_to_tz(out["timestamp"], tz)
+    out = out.dropna(subset=["timestamp"]).reset_index(drop=True)
+    if out.empty:
+        return _empty_live_bar_df()
+
+    out["code"] = str(code)
+    out = out[_LIVE_BAR_COLUMNS]
+    return out.sort_values("timestamp").reset_index(drop=True)
+
+
+def _to_ak_a_symbol(code: str) -> str:
+    return str(code).strip().zfill(6)
+
+
+def _to_ak_hk_symbol(code: str) -> str:
+    return str(code).strip().zfill(5)
+
+
+def _to_ak_date_time_str(dt: datetime, tz: ZoneInfo) -> str:
+    return dt.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S")
+
+
+class MultiSourceDataFeed:
+    def __init__(self, timezone: str = "Asia/Shanghai") -> None:
+        self.tz = ZoneInfo(timezone)
+
+    def fetch(self, symbol: SymbolRef, period: str, start: datetime, end: datetime) -> pd.DataFrame:
+        normalized_period = str(period).strip().lower()
+        if normalized_period not in _LIVE_FETCH_PERIODS:
+            raise ValueError(f"unsupported live fetch period: {period}")
+
+        primary = self._fetch_akshare(symbol=symbol, period=normalized_period, start=start, end=end)
+        if not primary.empty:
+            return primary
+        return self._fetch_yfinance(symbol=symbol, period=normalized_period, start=start, end=end)
+
+    def _fetch_akshare(self, symbol: SymbolRef, period: str, start: datetime, end: datetime) -> pd.DataFrame:
+        if symbol.market not in {"cn", "hk"}:
+            return pd.DataFrame()
+        ak_period = _AK_MINUTE_PERIOD_MAP.get(period)
+        if not ak_period:
+            return pd.DataFrame()
+
+        start_str = _to_ak_date_time_str(start, self.tz)
+        end_str = _to_ak_date_time_str(end, self.tz)
+        candidates: list[tuple[str, dict[str, object]]]
+        if symbol.market == "hk":
+            candidates = [
+                (
+                    "stock_hk_hist_min_em",
+                    {
+                        "symbol": _to_ak_hk_symbol(symbol.code),
+                        "period": ak_period,
+                        "start_date": start_str,
+                        "end_date": end_str,
+                    },
+                ),
+                (
+                    "stock_hk_hist_min",
+                    {
+                        "symbol": _to_ak_hk_symbol(symbol.code),
+                        "period": ak_period,
+                        "start_date": start_str,
+                        "end_date": end_str,
+                    },
+                ),
+            ]
+        else:
+            candidates = [
+                (
+                    "stock_zh_a_hist_min_em",
+                    {
+                        "symbol": _to_ak_a_symbol(symbol.code),
+                        "period": ak_period,
+                        "start_date": start_str,
+                        "end_date": end_str,
+                    },
+                ),
+            ]
+
+        ak_df = _call_akshare_with_candidates(candidates)
+        return _normalize_akshare_realtime_df(ak_df, symbol.code, self.tz)
+
+    def _fetch_yfinance(self, symbol: SymbolRef, period: str, start: datetime, end: datetime) -> pd.DataFrame:
+        yf_symbol = _to_yf_symbol(symbol)
+        try:
+            downloaded = yf.download(
+                tickers=yf_symbol,
+                start=start.astimezone(ZoneInfo("UTC")).replace(tzinfo=None),
+                end=end.astimezone(ZoneInfo("UTC")).replace(tzinfo=None),
+                interval=period,
+                auto_adjust=False,
+                progress=False,
+                threads=False,
+            )
+        except Exception:
+            return _empty_live_bar_df()
+        return _normalize_realtime_df(downloaded, symbol.code, self.tz)
 
 
 def _aggregate_period(df_1m: pd.DataFrame, period: str) -> pd.DataFrame:
@@ -105,9 +277,15 @@ def _aggregate_period(df_1m: pd.DataFrame, period: str) -> pd.DataFrame:
 
 
 class LiveMarketDataStore:
-    def __init__(self, timezone: str = "Asia/Shanghai", session_open_time: time = time(9, 30)) -> None:
+    def __init__(
+        self,
+        timezone: str = "Asia/Shanghai",
+        session_open_time: time = time(9, 30),
+        data_feed: MultiSourceDataFeed | None = None,
+    ) -> None:
         self.tz = ZoneInfo(timezone)
         self.session_open_time = session_open_time
+        self.data_feed = data_feed or MultiSourceDataFeed(timezone=timezone)
         self._cache: dict[str, dict[str, pd.DataFrame]] = {period: {} for period in _SUPPORTED_PERIODS}
 
     def warmup(self, symbols: Sequence[SymbolRef], at: datetime) -> None:
@@ -158,22 +336,12 @@ class LiveMarketDataStore:
         self._rebuild_daily_from_60m(symbol=symbol)
 
     def _refresh_symbol_period(self, symbol: SymbolRef, period: str, at: datetime) -> None:
-        yf_symbol = _to_yf_symbol(symbol)
         start_ts = self._session_start(at)
         end_ts = at + timedelta(minutes=1)
         try:
-            downloaded = yf.download(
-                tickers=yf_symbol,
-                start=start_ts.astimezone(ZoneInfo("UTC")).replace(tzinfo=None),
-                end=end_ts.astimezone(ZoneInfo("UTC")).replace(tzinfo=None),
-                interval=period,
-                auto_adjust=False,
-                progress=False,
-                threads=False,
-            )
+            normalized = self.data_feed.fetch(symbol=symbol, period=period, start=start_ts, end=end_ts)
         except Exception:
             return
-        normalized = _normalize_realtime_df(downloaded, symbol.code, self.tz)
         if normalized.empty:
             return
         normalized = normalized[normalized["timestamp"] <= at].reset_index(drop=True)

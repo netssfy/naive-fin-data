@@ -40,6 +40,11 @@ class RecordingLiveStrategy(TradingStrategy):
 
 def test_live_exchange_realtime_1m_and_no_future_data(monkeypatch) -> None:
     calls: list[dict[str, object]] = []
+    ak_calls: list[object] = []
+
+    def fake_akshare(*args, **kwargs) -> pd.DataFrame:
+        ak_calls.append((args, kwargs))
+        return pd.DataFrame()
 
     def fake_download(*args, **kwargs) -> pd.DataFrame:
         calls.append(dict(kwargs))
@@ -63,6 +68,7 @@ def test_live_exchange_realtime_1m_and_no_future_data(monkeypatch) -> None:
             index=idx,
         )
 
+    monkeypatch.setattr("trader_incubator.live._call_akshare_with_candidates", fake_akshare)
     monkeypatch.setattr("trader_incubator.live.yf.download", fake_download)
 
     tz = ZoneInfo("Asia/Shanghai")
@@ -87,6 +93,7 @@ def test_live_exchange_realtime_1m_and_no_future_data(monkeypatch) -> None:
 
     requested_intervals = {str(item.get("interval")) for item in calls}
     assert {"1m", "5m", "15m", "30m", "60m"}.issubset(requested_intervals)
+    assert len(ak_calls) >= 5
     start_values = [item.get("start") for item in calls if item.get("start") is not None]
     assert start_values, "live fetch should pass start time"
     earliest_start = min(start_values)
