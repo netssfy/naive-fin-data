@@ -149,10 +149,19 @@ class HistoricalDataStore:
         self._cache[symbol.key] = merged
         return merged
 
-    def get_history(self, symbol: SymbolRef, lookback: int, end_time: datetime | None = None) -> pd.DataFrame:
+    def get_history(
+        self,
+        symbol: SymbolRef,
+        lookback: int,
+        end_time: datetime | None = None,
+        period: str | None = None,
+    ) -> pd.DataFrame:
         df = self._load_symbol(symbol)
         if df.empty:
             return df.copy()
+        requested_period = str(period or self.period).strip().lower()
+        if requested_period != self.period:
+            raise ValueError(f"historical store only loaded period={self.period}, got period={requested_period}")
 
         out = df
         if end_time is not None:
@@ -292,12 +301,13 @@ class TradingStrategy:
         code: str,
         lookback: int = 120,
         end_time: datetime | None = None,
+        period: str = "1m",
         market: str = "cn",
         type_name: str = "stock",
     ) -> pd.DataFrame:
         exchange = self._require_exchange()
         symbol = SymbolRef(code=str(code).strip(), market=market, type_name=type_name)
-        return exchange.get_history(symbol=symbol, lookback=lookback, end_time=end_time)
+        return exchange.get_history(symbol=symbol, lookback=lookback, end_time=end_time, period=period)
 
     def place_market_order(
         self,
@@ -380,8 +390,14 @@ class Exchange:
         for strategy in self.strategies:
             strategy.on_post_close(post_close_time)
 
-    def get_history(self, symbol: SymbolRef, lookback: int, end_time: datetime | None = None) -> pd.DataFrame:
-        return self.data_store.get_history(symbol=symbol, lookback=lookback, end_time=end_time)
+    def get_history(
+        self,
+        symbol: SymbolRef,
+        lookback: int,
+        end_time: datetime | None = None,
+        period: str = "1m",
+    ) -> pd.DataFrame:
+        return self.data_store.get_history(symbol=symbol, lookback=lookback, end_time=end_time, period=period)
 
     def place_market_order(self, strategy_name: str, symbol: SymbolRef, side: str, quantity: int) -> Order:
         bar = self._current_bars.get(symbol.key)
