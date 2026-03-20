@@ -28,6 +28,23 @@ INTERVAL_CONFIG = {
     "monthly": {"interval": "1mo", "period": "max", "max_span_days": 3650},
 }
 
+AK_MINUTE_PERIOD_MAP = {
+    "1m": "1",
+    "5m": "5",
+    "15m": "15",
+    "30m": "30",
+    "60m": "60",
+}
+
+AK_DAILY_PERIOD_MAP = {
+    "1d": "daily",
+    "daily": "daily",
+    "1w": "weekly",
+    "weekly": "weekly",
+    "1mo": "monthly",
+    "monthly": "monthly",
+}
+
 
 @dataclass(frozen=True)
 class FetchTarget:
@@ -85,6 +102,41 @@ def _normalize_price_df(df: pd.DataFrame, code: str) -> pd.DataFrame:
     out.columns = [str(col) for col in out.columns]
     return out
 
+
+
+def _normalize_akshare_price_df(df: pd.DataFrame, code: str) -> pd.DataFrame:
+    if df.empty:
+        return df
+
+    out = df.copy().reset_index(drop=True)
+    rename_map = {
+        "日期": "timestamp",
+        "时间": "timestamp",
+        "date": "timestamp",
+        "datetime": "timestamp",
+        "开盘": "open",
+        "收盘": "close",
+        "最高": "high",
+        "最低": "low",
+        "open": "open",
+        "high": "high",
+        "low": "low",
+        "close": "close",
+        "成交量": "volume",
+        "volume": "volume",
+    }
+    out = out.rename(columns=rename_map)
+
+    for col in ["timestamp", "open", "high", "low", "close", "volume"]:
+        if col not in out.columns:
+            out[col] = pd.NA
+    if "adj_close" not in out.columns:
+        out["adj_close"] = out["close"]
+
+    out["code"] = code
+    out = out[["timestamp", "open", "high", "low", "close", "adj_close", "volume", "code"]]
+    out.columns = [str(col) for col in out.columns]
+    return out
 
 def _save_parquet(df: pd.DataFrame, target: FetchTarget, output_root: Path | str) -> Path:
     output_root = Path(output_root)
@@ -197,6 +249,33 @@ def _to_yf_time(dt: datetime) -> datetime:
     return dt.astimezone(timezone.utc).replace(tzinfo=None)
 
 
+
+def _to_ak_date_time_str(dt: datetime) -> str:
+    return dt.astimezone(UTC8).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _to_ak_date_str(dt: datetime) -> str:
+    return dt.astimezone(UTC8).strftime("%Y%m%d")
+
+
+def _is_minute_period(period: str) -> bool:
+    return _normalize_period(period) in AK_MINUTE_PERIOD_MAP
+
+
+def _call_akshare_with_candidates(candidates: list[tuple[str, dict[str, object]]]) -> pd.DataFrame:
+    errors: list[str] = []
+    for fn_name, kwargs in candidates:
+        fn = getattr(ak, fn_name, None)
+        if fn is None:
+            continue
+        try:
+            df = fn(**kwargs)
+            if isinstance(df, pd.DataFrame) and not df.empty:
+                return df
+            errors.append(f"{fn_name}: empty dataframe")
+        except Exception as exc:
+            errors.append(f"{fn_name}: {exc}")
+    raise RuntimeError("; ".join(errors) if errors else "no usable akshare endpoint")
 def _download_chunk_with_retry(symbol: str, interval: str, start_time: datetime, end_time: datetime) -> pd.DataFrame:
     retries = 4
     for attempt in range(retries):
@@ -396,6 +475,185 @@ def _merge_code_name_df(base: pd.DataFrame, patch: pd.DataFrame) -> pd.DataFrame
     )
     return merged
 
+
+def _to_ak_a_symbol(code: str) -> str:
+    return str(code).strip().zfill(6)
+
+
+def _to_ak_hk_symbol(code: str) -> str:
+    return str(code).strip().zfill(5)
+
+
+def _download_a_share_with_akshare(code: str, period: str, adjust: str, last_data_time: datetime | None) -> pd.DataFrame:
+    norm_period = _normalize_period(period)
+    now_time = datetime.now(UTC8)
+
+    if _is_minute_period(norm_period):
+        ak_period = AK_MINUTE_PERIOD_MAP[norm_period]
+        cfg = _get_interval_config(norm_period)
+        lookback_days = int(cfg.get("max_span_days", 7) or 7)
+        start_dt = (last_data_time.astimezone(UTC8) - timedelta(minutes=1)) if last_data_time else (now_time - timedelta(days=lookback_days))
+        end_dt = now_time + timedelta(minutes=1)
+        candidates = [
+            (
+                "stock_zh_a_hist_min_em",
+                {
+                    "symbol": _to_ak_a_symbol(code),
+                    "period": ak_period,
+                    "adjust": adjust,
+                    "start_date": _to_ak_date_time_str(start_dt),
+                    "end_date": _to_ak_date_time_str(end_dt),
+                },
+            ),
+            (
+                "stock_zh_a_hist_min_em",
+                {
+                    "symbol": _to_ak_a_symbol(code),
+                    "period": ak_period,
+                    "start_date": _to_ak_date_time_str(start_dt),
+                    "end_date": _to_ak_date_time_str(end_dt),
+                },
+            ),
+        ]
+        return _call_akshare_with_candidates(candidates)
+
+    ak_period = AK_DAILY_PERIOD_MAP.get(norm_period)
+    if not ak_period:
+        raise ValueError(f"unsupported period for akshare: {period}")
+
+    start_dt = (last_data_time.astimezone(UTC8) - timedelta(days=1)) if last_data_time else (now_time - timedelta(days=3650))
+    end_dt = now_time
+    candidates = [
+        (
+            "stock_zh_a_hist",
+            {
+                "symbol": _to_ak_a_symbol(code),
+                "period": ak_period,
+                "adjust": adjust,
+                "start_date": _to_ak_date_str(start_dt),
+                "end_date": _to_ak_date_str(end_dt),
+            },
+        ),
+        (
+            "stock_zh_a_hist",
+            {
+                "symbol": _to_ak_a_symbol(code),
+                "period": ak_period,
+                "start_date": _to_ak_date_str(start_dt),
+                "end_date": _to_ak_date_str(end_dt),
+            },
+        ),
+        (
+            "stock_zh_a_hist",
+            {
+                "symbol": _to_ak_a_symbol(code),
+                "period": ak_period,
+                "adjust": adjust,
+            },
+        ),
+    ]
+    return _call_akshare_with_candidates(candidates)
+
+
+def _download_hk_with_akshare(code: str, period: str, adjust: str, last_data_time: datetime | None) -> pd.DataFrame:
+    norm_period = _normalize_period(period)
+    now_time = datetime.now(UTC8)
+
+    if _is_minute_period(norm_period):
+        ak_period = AK_MINUTE_PERIOD_MAP[norm_period]
+        cfg = _get_interval_config(norm_period)
+        lookback_days = int(cfg.get("max_span_days", 7) or 7)
+        start_dt = (last_data_time.astimezone(UTC8) - timedelta(minutes=1)) if last_data_time else (now_time - timedelta(days=lookback_days))
+        end_dt = now_time + timedelta(minutes=1)
+        candidates = [
+            (
+                "stock_hk_hist_min_em",
+                {
+                    "symbol": _to_ak_hk_symbol(code),
+                    "period": ak_period,
+                    "adjust": adjust,
+                    "start_date": _to_ak_date_time_str(start_dt),
+                    "end_date": _to_ak_date_time_str(end_dt),
+                },
+            ),
+            (
+                "stock_hk_hist_min_em",
+                {
+                    "symbol": _to_ak_hk_symbol(code),
+                    "period": ak_period,
+                    "start_date": _to_ak_date_time_str(start_dt),
+                    "end_date": _to_ak_date_time_str(end_dt),
+                },
+            ),
+            (
+                "stock_hk_hist_min",
+                {
+                    "symbol": _to_ak_hk_symbol(code),
+                    "period": ak_period,
+                    "adjust": adjust,
+                    "start_date": _to_ak_date_time_str(start_dt),
+                    "end_date": _to_ak_date_time_str(end_dt),
+                },
+            ),
+        ]
+        return _call_akshare_with_candidates(candidates)
+
+    ak_period = AK_DAILY_PERIOD_MAP.get(norm_period)
+    if not ak_period:
+        raise ValueError(f"unsupported period for akshare: {period}")
+
+    start_dt = (last_data_time.astimezone(UTC8) - timedelta(days=1)) if last_data_time else (now_time - timedelta(days=3650))
+    end_dt = now_time
+    candidates = [
+        (
+            "stock_hk_hist",
+            {
+                "symbol": _to_ak_hk_symbol(code),
+                "period": ak_period,
+                "adjust": adjust,
+                "start_date": _to_ak_date_str(start_dt),
+                "end_date": _to_ak_date_str(end_dt),
+            },
+        ),
+        (
+            "stock_hk_hist",
+            {
+                "symbol": _to_ak_hk_symbol(code),
+                "period": ak_period,
+                "start_date": _to_ak_date_str(start_dt),
+                "end_date": _to_ak_date_str(end_dt),
+            },
+        ),
+        (
+            "stock_hk_hist",
+            {
+                "symbol": _to_ak_hk_symbol(code),
+                "period": ak_period,
+                "adjust": adjust,
+            },
+        ),
+    ]
+    return _call_akshare_with_candidates(candidates)
+
+
+def _download_priority_akshare_with_fallback_yf(
+    market: str,
+    code: str,
+    period: str,
+    adjust: str,
+    last_data_time: datetime | None,
+) -> pd.DataFrame:
+    try:
+        if market.lower() == "hk":
+            ak_df = _download_hk_with_akshare(code=code, period=period, adjust=adjust, last_data_time=last_data_time)
+        else:
+            ak_df = _download_a_share_with_akshare(code=code, period=period, adjust=adjust, last_data_time=last_data_time)
+        return _normalize_akshare_price_df(ak_df, code)
+    except Exception:
+        symbol = _to_yf_hk_symbol(code) if market.lower() == "hk" else _to_yf_a_symbol(code)
+        yf_df = _download_with_yfinance_incremental(symbol=symbol, period=period, last_data_time=last_data_time)
+        return _normalize_price_df(yf_df, code)
+
 def _to_yf_a_symbol(code: str) -> str:
     raw = str(code).strip().zfill(6)
     if raw.startswith(("6", "9", "5")):
@@ -475,18 +733,18 @@ def fetch_single_a_share(
     type_name: str = "stock",
     market: str = "cn",
 ) -> Path | None:
-    del adjust
     norm_code = str(code).strip().zfill(6)
     norm_period = _normalize_period(period)
     target = FetchTarget(type=type_name, market=market, code=norm_code, period=norm_period)
 
     last_data_time = _load_last_data_time_from_status(output_root=output_root, target=target)
-    df = _download_with_yfinance_incremental(
-        symbol=_to_yf_a_symbol(norm_code),
+    df = _download_priority_akshare_with_fallback_yf(
+        market=market,
+        code=norm_code,
         period=norm_period,
+        adjust=adjust,
         last_data_time=last_data_time,
     )
-    df = _normalize_price_df(df, norm_code)
     df = _filter_rows_after(df, last_data_time)
     if df.empty:
         return None
@@ -541,18 +799,18 @@ def fetch_single_hk(
     type_name: str = "stock",
     market: str = "hk",
 ) -> Path | None:
-    del adjust
     norm_code = str(code).strip().zfill(5)
     norm_period = _normalize_period(period)
     target = FetchTarget(type=type_name, market=market, code=norm_code, period=norm_period)
 
     last_data_time = _load_last_data_time_from_status(output_root=output_root, target=target)
-    df = _download_with_yfinance_incremental(
-        symbol=_to_yf_hk_symbol(norm_code),
+    df = _download_priority_akshare_with_fallback_yf(
+        market=market,
+        code=norm_code,
         period=norm_period,
+        adjust=adjust,
         last_data_time=last_data_time,
     )
-    df = _normalize_price_df(df, norm_code)
     df = _filter_rows_after(df, last_data_time)
     if df.empty:
         return None
@@ -725,6 +983,14 @@ def fetch_all(
         symbols=symbols,
         limit=limit,
     )
+
+
+
+
+
+
+
+
 
 
 
