@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 import importlib
@@ -422,3 +423,82 @@ def _to_datetime(value: str | date | datetime, tz: ZoneInfo, is_end: bool) -> da
     parsed_date = date.fromisoformat(text)
     target_time = time(23, 59) if is_end else time(0, 0)
     return datetime.combine(parsed_date, target_time, tzinfo=tz)
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Run season backtest quickly (default season: s1)")
+    parser.add_argument("--season", default="s1", help="season slug, default: s1")
+    parser.add_argument("--project-root", default=".", help="project root path")
+    parser.add_argument("--timezone", default="Asia/Shanghai", help="runtime timezone")
+    parser.add_argument("--start", default=None, help="start datetime/date, ISO-8601")
+    parser.add_argument("--end", default=None, help="end datetime/date, ISO-8601")
+    parser.add_argument(
+        "--minutes",
+        type=int,
+        default=30,
+        help="when --start is provided but --end is omitted, end=start+minutes (default 30)",
+    )
+    parser.add_argument("--debug", action="store_true", help="print per-minute debug logs")
+    parser.add_argument("--print-orders", type=int, default=20, help="print first N orders, default 20")
+    return parser
+
+
+def _resolve_backtest_window(
+    season_slug: str,
+    project_root: Path | str,
+    timezone: str,
+    start: str | None,
+    end: str | None,
+    minutes: int,
+) -> tuple[datetime, datetime]:
+    tz = ZoneInfo(timezone)
+    if start is not None and end is not None:
+        return _to_datetime(start, tz=tz, is_end=False), _to_datetime(end, tz=tz, is_end=True)
+
+    if start is not None:
+        start_at = _to_datetime(start, tz=tz, is_end=False)
+        return start_at, start_at + timedelta(minutes=max(int(minutes), 1))
+
+    season = Season.load(season_slug=season_slug, project_root=project_root)
+    start_at = _to_datetime(season.start_date, tz=tz, is_end=False).replace(hour=9, minute=30)
+    if end is not None:
+        return start_at, _to_datetime(end, tz=tz, is_end=True)
+    return start_at, start_at + timedelta(minutes=max(int(minutes), 1))
+
+
+def main() -> int:
+    args = _build_parser().parse_args()
+    start_at, end_at = _resolve_backtest_window(
+        season_slug=args.season,
+        project_root=args.project_root,
+        timezone=args.timezone,
+        start=args.start,
+        end=args.end,
+        minutes=args.minutes,
+    )
+    result = run_season_backtest(
+        start_date=start_at,
+        end_date=end_at,
+        season_slug=args.season,
+        project_root=args.project_root,
+        timezone=args.timezone,
+        debug=args.debug,
+    )
+    print(f"season={result.season_slug}")
+    print(f"start={result.start_at.isoformat()}")
+    print(f"end={result.end_at.isoformat()}")
+    print(f"triggered_minutes={result.triggered_minutes}")
+    print(f"orders={len(result.orders)}")
+
+    limit = max(int(args.print_orders), 0)
+    for item in result.orders[:limit]:
+        print(
+            f"id={item.order_id} strategy={item.strategy_name} symbol={item.symbol_key} "
+            f"side={item.side} qty={item.quantity} status={item.status} fill={item.fill_price} "
+            f"at={item.submitted_at.isoformat()}"
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
