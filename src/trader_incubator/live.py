@@ -457,6 +457,12 @@ class LiveExchange:
             return list(self.matching_engine.orders)
         return [item for item in self.matching_engine.orders if item.strategy_name == strategy_name]
 
+    def _get_positions_for_strategy(self, strategy_name: str) -> dict[str, int]:
+        return self.matching_engine.get_positions(strategy_name=strategy_name)
+
+    def _get_trade_history_for_strategy(self, strategy_name: str) -> list[Order]:
+        return self.matching_engine.get_trade_history(strategy_name=strategy_name)
+
     def _sleep_until(self, target: datetime) -> None:
         target_ts = _ensure_timezone(target, self.tz)
         seconds = (target_ts - self.clock.now()).total_seconds()

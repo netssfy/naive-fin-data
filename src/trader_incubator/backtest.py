@@ -239,6 +239,12 @@ class BacktestExchange:
             return list(self.matching_engine.orders)
         return [item for item in self.matching_engine.orders if item.strategy_name == strategy_name]
 
+    def _get_positions_for_strategy(self, strategy_name: str) -> dict[str, int]:
+        return self.matching_engine.get_positions(strategy_name=strategy_name)
+
+    def _get_trade_history_for_strategy(self, strategy_name: str) -> list[Order]:
+        return self.matching_engine.get_trade_history(strategy_name=strategy_name)
+
     def _cap_end_time(self, end_time: datetime | None) -> datetime | None:
         if self._current_time is None:
             return end_time

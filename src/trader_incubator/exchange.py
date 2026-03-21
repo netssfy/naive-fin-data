@@ -264,6 +264,13 @@ class SimulatedMatchingEngine:
     def get_position(self, strategy_name: str, symbol: SymbolRef) -> int:
         return self.positions.get(strategy_name, {}).get(symbol.key, 0)
 
+    def get_positions(self, strategy_name: str) -> dict[str, int]:
+        all_positions = self.positions.get(strategy_name, {})
+        return {symbol_key: quantity for symbol_key, quantity in all_positions.items() if quantity != 0}
+
+    def get_trade_history(self, strategy_name: str) -> list[Order]:
+        return [order for order in self.orders if order.strategy_name == strategy_name]
+
     def get_cash(self, strategy_name: str) -> float:
         return self.cash_ledger.get(strategy_name, 0.0)
 
@@ -334,6 +341,14 @@ class TradingStrategy:
     ) -> int:
         exchange = self._require_exchange()
         return exchange.get_position(strategy_name=self.name, code=str(code).strip(), market=market, type_name=type_name)
+
+    def get_positions(self) -> dict[str, int]:
+        exchange = self._require_exchange()
+        return exchange._get_positions_for_strategy(strategy_name=self.name)
+
+    def get_trade_history(self) -> list[Order]:
+        exchange = self._require_exchange()
+        return exchange._get_trade_history_for_strategy(strategy_name=self.name)
 
     def _require_exchange(self) -> Exchange:
         if self._exchange is None:
@@ -424,6 +439,12 @@ class Exchange:
         if strategy_name is None:
             return list(self.matching_engine.orders)
         return [order for order in self.matching_engine.orders if order.strategy_name == strategy_name]
+
+    def _get_positions_for_strategy(self, strategy_name: str) -> dict[str, int]:
+        return self.matching_engine.get_positions(strategy_name=strategy_name)
+
+    def _get_trade_history_for_strategy(self, strategy_name: str) -> list[Order]:
+        return self.matching_engine.get_trade_history(strategy_name=strategy_name)
 
     def _collect_subscribed_symbols(self) -> list[SymbolRef]:
         seen = set()

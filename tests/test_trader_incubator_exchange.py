@@ -33,6 +33,8 @@ class RecordingStrategy(TradingStrategy):
         self.post_close_events: list[datetime] = []
         self.last_seen_close: list[float] = []
         self.created_orders = []
+        self.positions_snapshot: dict[str, int] = {}
+        self.trade_history_snapshot = []
 
     def on_pre_open(self, event_time: datetime) -> None:
         self.pre_open_events.append(event_time)
@@ -48,6 +50,8 @@ class RecordingStrategy(TradingStrategy):
 
     def on_post_close(self, event_time: datetime) -> None:
         self.post_close_events.append(event_time)
+        self.positions_snapshot = self.get_positions()
+        self.trade_history_snapshot = self.get_trade_history()
 
 
 def _new_test_root() -> Path:
@@ -139,5 +143,8 @@ def test_exchange_strategy_helpers_history_and_market_order() -> None:
         assert orders[0].status == "filled"
         assert orders[0].fill_price == 10.0
         assert exchange.get_position(strategy_name="demo", code="000001") == 100
+        assert strategy.positions_snapshot == {"stock:cn:000001": 100}
+        assert len(strategy.trade_history_snapshot) == 1
+        assert strategy.trade_history_snapshot[0].symbol_key == "stock:cn:000001"
     finally:
         _cleanup_test_root(root)
