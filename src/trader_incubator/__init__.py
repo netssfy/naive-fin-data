@@ -13,6 +13,8 @@ __all__ = [
     "LiveExchange",
     "run_season_backtest",
     "run_season_live",
+    "run_all_seasons_live",
+    "list_valid_season_slugs",
     "Season",
     "SeasonTraderRef",
     "Trader",
@@ -20,9 +22,14 @@ __all__ = [
 
 
 def __getattr__(name: str):
-    if name in {"LiveExchange", "run_season_live"}:
-        from trader_incubator.live import LiveExchange, run_season_live
+    if name in {"LiveExchange", "run_season_live", "run_all_seasons_live", "list_valid_season_slugs"}:
+        from trader_incubator.live import LiveExchange, list_valid_season_slugs, run_all_seasons_live, run_season_live
 
-        return {"LiveExchange": LiveExchange, "run_season_live": run_season_live}[name]
+        return {
+            "LiveExchange": LiveExchange,
+            "run_season_live": run_season_live,
+            "run_all_seasons_live": run_all_seasons_live,
+            "list_valid_season_slugs": list_valid_season_slugs,
+        }[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 

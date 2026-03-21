@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Sequence
 from zoneinfo import ZoneInfo
@@ -20,6 +20,7 @@ from trader_incubator.exchange import (
     _ensure_timezone,
     _floor_to_minute,
 )
+from trader_incubator.season import Season
 
 
 _SUPPORTED_PERIODS = {"1m", "5m", "15m", "30m", "60m", "1d"}
@@ -170,16 +171,27 @@ def _to_ak_date_time_str(dt: datetime, tz: ZoneInfo) -> str:
 class MultiSourceDataFeed:
     def __init__(self, timezone: str = "Asia/Shanghai") -> None:
         self.tz = ZoneInfo(timezone)
+        self._fetch_cache: dict[tuple[str, str, datetime, datetime], pd.DataFrame] = {}
 
     def fetch(self, symbol: SymbolRef, period: str, start: datetime, end: datetime) -> pd.DataFrame:
         normalized_period = str(period).strip().lower()
         if normalized_period not in _LIVE_FETCH_PERIODS:
             raise ValueError(f"unsupported live fetch period: {period}")
 
+        start_key = _floor_to_minute(_ensure_timezone(start, self.tz))
+        end_key = _floor_to_minute(_ensure_timezone(end, self.tz))
+        cache_key = (symbol.key, normalized_period, start_key, end_key)
+        cached = self._fetch_cache.get(cache_key)
+        if cached is not None:
+            return cached.copy()
+
         primary = self._fetch_akshare(symbol=symbol, period=normalized_period, start=start, end=end)
         if not primary.empty:
-            return primary
-        return self._fetch_yfinance(symbol=symbol, period=normalized_period, start=start, end=end)
+            out = primary
+        else:
+            out = self._fetch_yfinance(symbol=symbol, period=normalized_period, start=start, end=end)
+        self._fetch_cache[cache_key] = out.copy()
+        return out
 
     def _fetch_akshare(self, symbol: SymbolRef, period: str, start: datetime, end: datetime) -> pd.DataFrame:
         if symbol.market not in {"cn", "hk"}:
@@ -287,6 +299,7 @@ class LiveMarketDataStore:
         self.session_open_time = session_open_time
         self.data_feed = data_feed or MultiSourceDataFeed(timezone=timezone)
         self._cache: dict[str, dict[str, pd.DataFrame]] = {period: {} for period in _SUPPORTED_PERIODS}
+        self._last_refresh_minute: dict[tuple[str, str], datetime] = {}
 
     def warmup(self, symbols: Sequence[SymbolRef], at: datetime) -> None:
         for symbol in symbols:
@@ -331,11 +344,17 @@ class LiveMarketDataStore:
         return out.reset_index(drop=True).copy()
 
     def _refresh_symbol_all_periods(self, symbol: SymbolRef, at: datetime) -> None:
-        for period in _LIVE_FETCH_PERIODS:
-            self._refresh_symbol_period(symbol=symbol, period=period, at=at)
+        self._refresh_symbol_period(symbol=symbol, period="1m", at=at)
+        self._rebuild_intraday_periods_from_1m(symbol=symbol)
         self._rebuild_daily_from_60m(symbol=symbol)
 
     def _refresh_symbol_period(self, symbol: SymbolRef, period: str, at: datetime) -> None:
+        minute_key = _floor_to_minute(_ensure_timezone(at, self.tz))
+        refresh_key = (period, symbol.key)
+        if self._last_refresh_minute.get(refresh_key) == minute_key:
+            return
+        self._last_refresh_minute[refresh_key] = minute_key
+
         start_ts = self._session_start(at)
         end_ts = at + timedelta(minutes=1)
         try:
@@ -361,6 +380,13 @@ class LiveMarketDataStore:
             return
         self._cache["1d"][symbol.key] = _aggregate_period(source, "1d")
 
+    def _rebuild_intraday_periods_from_1m(self, symbol: SymbolRef) -> None:
+        source = self._cache["1m"].get(symbol.key)
+        if source is None or source.empty:
+            return
+        for period in ("5m", "15m", "30m", "60m"):
+            self._cache[period][symbol.key] = _aggregate_period(source, period)
+
     def _session_start(self, at: datetime) -> datetime:
         at_ts = _ensure_timezone(at, self.tz)
         open_ts = datetime.combine(at_ts.date(), self.session_open_time, tzinfo=self.tz)
@@ -375,50 +401,61 @@ class LiveExchange:
         strategies: Sequence[TradingStrategy],
         timezone: str = "Asia/Shanghai",
         clock: RealClock | None = None,
+        data_store: LiveMarketDataStore | None = None,
         debug: bool = False,
     ) -> None:
         self.strategies = list(strategies)
         self.tz = ZoneInfo(timezone)
         self.clock = clock or RealClock(self.tz)
-        self.data_store = LiveMarketDataStore(timezone=timezone)
+        self.data_store = data_store or LiveMarketDataStore(timezone=timezone)
         self.matching_engine = SimulatedMatchingEngine()
         self.debug = bool(debug)
         self._current_time: datetime | None = None
         self._current_bars: dict[str, pd.Series] = {}
+        self._subscribed_symbols: list[SymbolRef] = []
         for strategy in self.strategies:
             strategy._bind_exchange(self)  # type: ignore[arg-type]
 
-    def run(self, max_minutes: int | None = None, end_time: datetime | None = None) -> int:
-        subscribed_symbols = self._collect_subscribed_symbols()
-        now = _floor_to_minute(self.clock.now())
-        self.data_store.warmup(subscribed_symbols, at=now)
+    def prepare(self, at: datetime | None = None) -> None:
+        self._subscribed_symbols = self._collect_subscribed_symbols()
+        now = _floor_to_minute(_ensure_timezone(at, self.tz)) if at is not None else _floor_to_minute(self.clock.now())
+        self.data_store.warmup(self._subscribed_symbols, at=now)
 
+    def run_tick(self, tick_time: datetime) -> None:
+        normalized_tick = _floor_to_minute(_ensure_timezone(tick_time, self.tz))
+        if not self._subscribed_symbols:
+            self._subscribed_symbols = self._collect_subscribed_symbols()
+
+        self._current_time = normalized_tick
+        self._current_bars = self.data_store.latest_1m(self._subscribed_symbols, at=normalized_tick)
+        if self.debug:
+            print(
+                f"[LIVE][{normalized_tick.isoformat()}] tick "
+                f"bars={len(self._current_bars)} strategies={len(self.strategies)}"
+            )
+        for strategy in self.strategies:
+            strategy_bars = {
+                symbol.key: self._current_bars[symbol.key]
+                for symbol in strategy.symbols
+                if symbol.key in self._current_bars
+            }
+            before_orders = len(self.matching_engine.orders)
+            strategy.on_minute(normalized_tick, strategy_bars)
+            if self.debug:
+                print(
+                    f"[LIVE][{normalized_tick.isoformat()}] strategy={strategy.name} "
+                    f"bars={len(strategy_bars)} new_orders={len(self.matching_engine.orders) - before_orders}"
+                )
+
+    def run(self, max_minutes: int | None = None, end_time: datetime | None = None) -> int:
+        now = _floor_to_minute(self.clock.now())
+        self.prepare(at=now)
         triggered_minutes = 0
         while True:
             tick_time = _floor_to_minute(self.clock.now())
             if end_time is not None and tick_time > _floor_to_minute(_ensure_timezone(end_time, self.tz)):
                 break
-
-            self._current_time = tick_time
-            self._current_bars = self.data_store.latest_1m(subscribed_symbols, at=tick_time)
-            if self.debug:
-                print(
-                    f"[LIVE][{tick_time.isoformat()}] tick "
-                    f"bars={len(self._current_bars)} strategies={len(self.strategies)}"
-                )
-            for strategy in self.strategies:
-                strategy_bars = {
-                    symbol.key: self._current_bars[symbol.key]
-                    for symbol in strategy.symbols
-                    if symbol.key in self._current_bars
-                }
-                before_orders = len(self.matching_engine.orders)
-                strategy.on_minute(tick_time, strategy_bars)
-                if self.debug:
-                    print(
-                        f"[LIVE][{tick_time.isoformat()}] strategy={strategy.name} "
-                        f"bars={len(strategy_bars)} new_orders={len(self.matching_engine.orders) - before_orders}"
-                    )
+            self.run_tick(tick_time)
 
             triggered_minutes += 1
             if max_minutes is not None and triggered_minutes >= max_minutes:
@@ -509,9 +546,121 @@ def run_season_live(
     return minutes, exchange.list_orders()
 
 
+def list_valid_season_slugs(
+    project_root: Path | str = ".",
+    timezone: str = "Asia/Shanghai",
+    as_of: date | None = None,
+) -> list[str]:
+    base_dir = Path(project_root) / "src" / "trader_incubator" / "skills" / "seasons"
+    if not base_dir.exists():
+        return []
+
+    today = as_of or datetime.now(ZoneInfo(timezone)).date()
+    valid: list[str] = []
+    for season_json in sorted(base_dir.glob("*/season.json")):
+        season_slug = season_json.parent.name
+        try:
+            season = Season.load(season_slug=season_slug, project_root=project_root)
+            start_day = date.fromisoformat(str(season.start_date))
+            end_day = date.fromisoformat(str(season.end_date)) if season.end_date else None
+        except Exception:
+            continue
+        if start_day > today:
+            continue
+        if end_day is not None and end_day < today:
+            continue
+        valid.append(season_slug)
+    return valid
+
+
+def run_all_seasons_live(
+    project_root: Path | str = ".",
+    timezone: str = "Asia/Shanghai",
+    max_minutes: int | None = None,
+    end_time: str | datetime | None = None,
+    debug: bool = False,
+) -> tuple[int, list[str], list[Order]]:
+    season_slugs = list_valid_season_slugs(project_root=project_root, timezone=timezone)
+    if not season_slugs:
+        return 0, [], []
+
+    tz = ZoneInfo(timezone)
+    shared_clock = RealClock(tz)
+    shared_feed = MultiSourceDataFeed(timezone=timezone)
+    exchanges: dict[str, LiveExchange] = {}
+    for season_slug in season_slugs:
+        season_strategies = load_season_strategies(season_slug=season_slug, project_root=project_root)
+        store = LiveMarketDataStore(timezone=timezone, data_feed=shared_feed)
+        exchanges[season_slug] = LiveExchange(
+            strategies=season_strategies,
+            timezone=timezone,
+            clock=shared_clock,
+            data_store=store,
+            debug=debug,
+        )
+
+    if debug:
+        total_strategies = sum(len(exchange.strategies) for exchange in exchanges.values())
+        print(f"[LIVE-ALL] valid_seasons={season_slugs} strategies={total_strategies}")
+
+    end_ts: datetime | None = None
+    if end_time is not None:
+        if isinstance(end_time, datetime):
+            end_ts = _ensure_timezone(end_time, ZoneInfo(timezone))
+        else:
+            end_ts = _ensure_timezone(datetime.fromisoformat(str(end_time).replace("Z", "+00:00")), ZoneInfo(timezone))
+
+    start_tick = _floor_to_minute(shared_clock.now())
+    for exchange in exchanges.values():
+        exchange.prepare(at=start_tick)
+
+    triggered_minutes = 0
+    while True:
+        tick_time = _floor_to_minute(shared_clock.now())
+        if end_ts is not None and tick_time > _floor_to_minute(_ensure_timezone(end_ts, tz)):
+            break
+
+        for exchange in exchanges.values():
+            exchange.run_tick(tick_time)
+
+        triggered_minutes += 1
+        if max_minutes is not None and triggered_minutes >= max_minutes:
+            break
+
+        target = tick_time + timedelta(minutes=1)
+        target_ts = _ensure_timezone(target, tz)
+        shared_clock.sleep(max((target_ts - shared_clock.now()).total_seconds(), 0.0))
+
+    merged_orders: list[Order] = []
+    for season_slug, exchange in exchanges.items():
+        for item in exchange.list_orders():
+            merged_orders.append(
+                Order(
+                    order_id=item.order_id,
+                    strategy_name=f"{season_slug}:{item.strategy_name}",
+                    symbol_key=item.symbol_key,
+                    side=item.side,
+                    quantity=item.quantity,
+                    submitted_at=item.submitted_at,
+                    status=item.status,
+                    fill_price=item.fill_price,
+                    message=item.message,
+                )
+            )
+    return triggered_minutes, season_slugs, merged_orders
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run season live engine with realtime 1m bars")
-    parser.add_argument("--season", required=True, help="season slug, e.g. s1")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--season", help="season slug, e.g. s1")
+    group.add_argument("--all-seasons", action="store_true", help="load all valid seasons and run them together")
+    group.add_argument(
+        "--all-seaons",
+        action="store_true",
+        dest="all_seasons",
+        help="compat alias of --all-seasons (kept for typo tolerance)",
+    )
     parser.add_argument("--project-root", default=".", help="project root path")
     parser.add_argument("--timezone", default="Asia/Shanghai", help="runtime timezone")
     parser.add_argument("--max-minutes", type=int, default=None, help="stop after N minutes")
@@ -522,18 +671,32 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = _build_parser().parse_args()
-    minutes, orders = run_season_live(
-        season_slug=args.season,
-        project_root=args.project_root,
-        timezone=args.timezone,
-        max_minutes=args.max_minutes,
-        end_time=args.end_time,
-        debug=args.debug,
-    )
-    print(f"minutes={minutes}")
-    print(f"orders={len(orders)}")
-    for item in orders[:20]:
-        print(item)
+    if args.all_seasons:
+        minutes, seasons, orders = run_all_seasons_live(
+            project_root=args.project_root,
+            timezone=args.timezone,
+            max_minutes=args.max_minutes,
+            end_time=args.end_time,
+            debug=args.debug,
+        )
+        print(f"seasons={seasons}")
+        print(f"minutes={minutes}")
+        print(f"orders={len(orders)}")
+        for item in orders[:20]:
+            print(item)
+    else:
+        minutes, orders = run_season_live(
+            season_slug=args.season,
+            project_root=args.project_root,
+            timezone=args.timezone,
+            max_minutes=args.max_minutes,
+            end_time=args.end_time,
+            debug=args.debug,
+        )
+        print(f"minutes={minutes}")
+        print(f"orders={len(orders)}")
+        for item in orders[:20]:
+            print(item)
     return 0
 
 
