@@ -10,7 +10,7 @@ from naive_fin_data import fetcher
 
 
 STANDARD_COLUMNS = ["timestamp", "open", "high", "low", "close", "adj_close", "volume", "code"]
-TEST_ROOT = Path("tests_tmp") / "pytest_run" / "fetcher"
+TEST_ROOT = Path(".tmp") / "tests" / "fetcher"
 
 
 def _case_root(name: str) -> Path:

@@ -17,6 +17,7 @@ class Trader:
         season:        Display name of the season this trader belongs to.
         style:         Trading style, e.g. "trend-following/intraday/strict-stop-loss".
         program_entry: Python import path to strategy class, e.g. "path.to.module:ClassName".
+        initial_capital: Initial cash assigned to this trader. None means inherit season default.
         symbols:       List of tradable symbol codes for this trader.
         created_at:    ISO-8601 datetime when this trader was created.
     """
@@ -25,6 +26,7 @@ class Trader:
     season: str
     style: str
     program_entry: str
+    initial_capital: float | None = None
     symbols: list[str] = field(default_factory=list)
     created_at: str = ""
 
@@ -62,6 +64,9 @@ class Trader:
             season=data["season"],
             style=data["style"],
             program_entry=data["program_entry"],
+            initial_capital=(
+                float(data["initial_capital"]) if data.get("initial_capital") is not None else None
+            ),
             symbols=data.get("symbols", []),
             created_at=data.get("created_at", ""),
         )

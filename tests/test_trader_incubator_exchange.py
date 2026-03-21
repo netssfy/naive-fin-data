@@ -51,7 +51,7 @@ class RecordingStrategy(TradingStrategy):
 
 
 def _new_test_root() -> Path:
-    root = Path("tests_tmp") / f"exchange-{uuid.uuid4().hex[:8]}"
+    root = Path(".tmp") / "tests" / f"exchange-{uuid.uuid4().hex[:8]}"
     root.mkdir(parents=True, exist_ok=False)
     return root
 

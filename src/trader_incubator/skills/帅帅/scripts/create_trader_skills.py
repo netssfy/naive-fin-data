@@ -22,7 +22,7 @@ _PROJECT_ROOT_GUESS = _HERE.parents[5]
 sys.path.insert(0, str(_PROJECT_ROOT_GUESS / "src"))
 
 from trader_incubator.trader import Trader  # noqa: E402
-from trader_incubator.season import Season, SeasonTraderRef  # noqa: E402
+from trader_incubator.season import Season, SeasonTraderRef, slugify  # noqa: E402
 
 
 def create_trader(
@@ -34,6 +34,7 @@ def create_trader(
     project_root: Path,
 ) -> Trader:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    season_obj = Season.load(season_slug=slugify(season), project_root=project_root)
 
     # Build a temporary Trader to derive slugs/module names
     t_tmp = Trader(trader=trader, season=season, style=style, program_entry="", symbols=symbols)
@@ -48,6 +49,7 @@ def create_trader(
         season=season,
         style=style,
         program_entry=program_entry,
+        initial_capital=season_obj.initial_capital,
         symbols=symbols,
         created_at=now,
     )
@@ -66,7 +68,7 @@ def create_trader(
     _write_strategy(skill_dir / "strategy.py", t)
 
     # 3. Update season.json roster
-    s = Season.load(t.season_slug, project_root)
+    s = season_obj
     s.add_trader(SeasonTraderRef(
         trader=t.trader,
         style=t.style,

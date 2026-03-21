@@ -192,6 +192,9 @@ class SimulatedMatchingEngine:
         self.positions: dict[str, dict[str, int]] = {}
         self.cash_ledger: dict[str, float] = {}
 
+    def seed_cash(self, strategy_name: str, initial_cash: float) -> None:
+        self.cash_ledger[strategy_name] = float(initial_cash)
+
     def submit_market_order(
         self,
         strategy_name: str,
@@ -272,12 +275,14 @@ class TradingStrategy:
         symbols: Sequence[str],
         default_market: str = "cn",
         default_type_name: str = "stock",
+        initial_capital: float = 0.0,
     ) -> None:
         self.name = str(name).strip()
         self._symbols = [
             SymbolRef.parse(raw=symbol, default_market=default_market, default_type_name=default_type_name)
             for symbol in symbols
         ]
+        self.initial_capital = float(initial_capital)
         self._exchange: Exchange | None = None
 
     @property
@@ -358,6 +363,7 @@ class Exchange:
 
         for strategy in self.strategies:
             strategy._bind_exchange(self)
+            self.matching_engine.seed_cash(strategy_name=strategy.name, initial_cash=strategy.initial_capital)
 
     def run(self, max_minutes: int | None = None) -> None:
         subscribed_symbols = self._collect_subscribed_symbols()

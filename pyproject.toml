@@ -28,6 +28,8 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--basetemp=.tmp/pytest/basetemp"
+cache_dir = ".tmp/pytest/cache"
 markers = [
   "integration: tests that call real AkShare APIs",
 ]

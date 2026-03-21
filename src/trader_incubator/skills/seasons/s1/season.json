@@ -3,16 +3,12 @@
   "market": "HK",
   "start_date": "2026-03-20",
   "end_date": null,
+  "initial_capital": 1000000.0,
   "symbol_pool": [
     "01810",
     "00700"
   ],
   "traders": [
-    {
-      "trader": "0号",
-      "style": "event-driven/swing/high-conviction",
-      "program_entry": "trader_incubator.skills.seasons.s1.traders.0号.strategy:TraderProgram"
-    }
   ],
   "created_at": "2026-03-20T07:21:43Z"
 }

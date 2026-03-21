@@ -79,6 +79,7 @@ class Season:
         market:       Trading market: "A_SHARE" | "HK" | "US".
         start_date:   Season start date (ISO-8601, e.g. "2026-01-01").
         end_date:     Season end date (ISO-8601). None means open-ended.
+        initial_capital: Initial cash assigned to each trader in this season.
         symbol_pool:  Allowed stock codes. Empty list means all market symbols allowed.
         traders:      Roster of traders registered in this season.
         created_at:   ISO-8601 datetime when this season was created.
@@ -88,6 +89,7 @@ class Season:
     market: str
     start_date: str
     end_date: Optional[str] = None
+    initial_capital: float = 1_000_000.0
     symbol_pool: list[str] = field(default_factory=list)
     traders: list[SeasonTraderRef] = field(default_factory=list)
     created_at: str = ""
@@ -113,6 +115,7 @@ class Season:
             market=data["market"],
             start_date=data["start_date"],
             end_date=data.get("end_date"),
+            initial_capital=float(data.get("initial_capital", 1_000_000.0)),
             symbol_pool=data.get("symbol_pool", []),
             traders=[SeasonTraderRef.from_dict(t) for t in data.get("traders", [])],
             created_at=data.get("created_at", ""),

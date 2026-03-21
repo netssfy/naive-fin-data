@@ -48,6 +48,11 @@ pip install -r requirements-dev.txt
 PYTHONPATH=src pytest -q -m integration
 ```
 
+## 临时目录约定
+- 统一使用 `./.tmp/` 存放本地临时文件与测试产物。
+- `pytest` 缓存与基准临时目录已在 `pyproject.toml` 固定到 `./.tmp/pytest/`。
+- 历史目录如 `tests_tmp/`、`.pytest_tmp/` 视为遗留目录，不再新增。
+
 ## GitHub Actions
 - 抓取工作流：`.github/workflows/daily-fetch.yml`
   - 每天 UTC `22:00`（北京时间次日 `06:00`）自动执行

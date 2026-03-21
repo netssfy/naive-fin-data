@@ -169,6 +169,7 @@ class BacktestExchange:
         self._current_bars: dict[str, pd.Series] = {}
         for strategy in self.strategies:
             strategy._bind_exchange(self)  # type: ignore[arg-type]
+            self.matching_engine.seed_cash(strategy_name=strategy.name, initial_cash=strategy.initial_capital)
 
     def run(self, start_at: datetime, end_at: datetime) -> int:
         start_ts = _floor_to_minute(_ensure_timezone(start_at, self.data_store.tz))
@@ -306,6 +307,11 @@ def load_season_strategies(season_slug: str, project_root: Path | str = ".") -> 
     for ref in season.traders:
         trader_obj = traders_by_slug.get(ref.slug)
         symbols = list(trader_obj.symbols) if trader_obj and trader_obj.symbols else list(season.symbol_pool)
+        initial_capital = (
+            float(trader_obj.initial_capital)
+            if trader_obj and trader_obj.initial_capital is not None
+            else float(season.initial_capital)
+        )
         if not symbols:
             continue
         strategy = _instantiate_strategy(
@@ -313,6 +319,7 @@ def load_season_strategies(season_slug: str, project_root: Path | str = ".") -> 
             strategy_name=ref.trader,
             symbols=symbols,
             market=market,
+            initial_capital=initial_capital,
             project_root=Path(project_root),
         )
         strategies.append(strategy)
@@ -324,6 +331,7 @@ def _instantiate_strategy(
     strategy_name: str,
     symbols: Sequence[str],
     market: str,
+    initial_capital: float,
     project_root: Path,
 ) -> TradingStrategy:
     module_name, class_name = _split_program_entry(program_entry)
@@ -331,9 +339,27 @@ def _instantiate_strategy(
     strategy_cls = getattr(module, class_name)
 
     try:
-        strategy = strategy_cls(name=strategy_name, symbols=list(symbols), default_market=market, default_type_name="stock")
+        strategy = strategy_cls(
+            name=strategy_name,
+            symbols=list(symbols),
+            default_market=market,
+            default_type_name="stock",
+            initial_capital=float(initial_capital),
+        )
     except TypeError:
-        strategy = strategy_cls()
+        try:
+            strategy = strategy_cls(
+                name=strategy_name,
+                symbols=list(symbols),
+                default_market=market,
+                default_type_name="stock",
+            )
+            if hasattr(strategy, "initial_capital"):
+                strategy.initial_capital = float(initial_capital)
+        except TypeError:
+            strategy = strategy_cls()
+            if hasattr(strategy, "initial_capital"):
+                strategy.initial_capital = float(initial_capital)
     if not isinstance(strategy, TradingStrategy):
         raise TypeError(f"strategy class is not TradingStrategy: {program_entry}")
     return strategy
