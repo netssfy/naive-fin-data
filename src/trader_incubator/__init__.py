@@ -15,6 +15,7 @@ __all__ = [
     "run_season_live",
     "run_all_seasons_live",
     "list_valid_season_slugs",
+    "Orchestrator",
     "Season",
     "SeasonTraderRef",
     "Trader",
@@ -31,5 +32,9 @@ def __getattr__(name: str):
             "run_all_seasons_live": run_all_seasons_live,
             "list_valid_season_slugs": list_valid_season_slugs,
         }[name]
+    if name == "Orchestrator":
+        from trader_incubator.orchestrator import Orchestrator
+
+        return Orchestrator
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 

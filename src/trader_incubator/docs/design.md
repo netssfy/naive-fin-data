@@ -188,3 +188,23 @@ python -m trader_incubator.live --all-seasons --max-minutes 5
 ```bash
 python -m trader_incubator.live --all-seaons --max-minutes 5
 ```
+
+## 11. 主控循环（Orchestrator）
+- 文件：`trader_incubator/orchestrator.py`
+- 目标：在一个长期运行进程中自动切换两种模式：
+  - 交易时段：拉起并守护 `live --all-seasons`
+  - 非交易时段：按交易员触发 `codex cli` 复盘和策略改进
+- 关键设计：
+  - 每天只触发一次非交易时段研究任务（状态文件去重）
+  - 子进程方式管理 live，切到非交易时段会安全停止 live 进程
+  - 主控进程自动注入 `PYTHONPATH=src` 供子进程导入项目模块
+
+示例：
+```bash
+python -m trader_incubator.orchestrator --poll-seconds 30
+```
+
+仅演练一次循环（不真的执行子进程）：
+```bash
+python -m trader_incubator.orchestrator --once --dry-run
+```
