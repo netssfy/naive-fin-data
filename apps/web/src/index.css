@@ -1,0 +1,36 @@
+﻿@import "tailwindcss";
+
+:root {
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #0f172a;
+  background-color: #f4f1e8;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+@theme {
+  --color-app: #f4f1e8;
+}
+
+@layer components {
+  .panel {
+    @apply rounded-xl border border-stone-300/90 bg-white/90 shadow-[0_14px_30px_rgba(15,23,42,0.08)];
+  }
+}
