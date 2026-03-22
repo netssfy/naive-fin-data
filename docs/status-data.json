@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-21T17:32:27.872125+08:00",
+  "generated_at": "2026-03-22T17:33:00.206114+08:00",
   "items": [
     {
       "type": "stock",
@@ -13,24 +13,24 @@
           "total_records": 1205
         },
         "5m": {
-          "last_fetch_time": "2026-03-21T00:14:34.810416+08:00",
-          "last_data_time": "2026-03-20T14:55:00+08:00",
-          "total_records": 3945
+          "last_fetch_time": "2026-03-22T17:32:08.474602+08:00",
+          "last_data_time": "2026-03-20T15:00:00+08:00",
+          "total_records": 3946
         },
         "15m": {
-          "last_fetch_time": "2026-03-21T00:14:37.966523+08:00",
-          "last_data_time": "2026-03-20T14:45:00+08:00",
-          "total_records": 1317
+          "last_fetch_time": "2026-03-22T17:32:10.105679+08:00",
+          "last_data_time": "2026-03-20T15:00:00+08:00",
+          "total_records": 1318
         },
         "30m": {
-          "last_fetch_time": "2026-03-21T00:14:39.939088+08:00",
-          "last_data_time": "2026-03-20T14:30:00+08:00",
-          "total_records": 659
+          "last_fetch_time": "2026-03-22T17:32:11.688577+08:00",
+          "last_data_time": "2026-03-20T15:00:00+08:00",
+          "total_records": 660
         },
         "60m": {
-          "last_fetch_time": "2026-03-21T00:14:42.574348+08:00",
-          "last_data_time": "2026-03-20T14:30:00+08:00",
-          "total_records": 4377
+          "last_fetch_time": "2026-03-22T17:32:13.275450+08:00",
+          "last_data_time": "2026-03-20T15:00:00+08:00",
+          "total_records": 4378
         },
         "1d": {
           "last_fetch_time": "2026-03-21T00:14:45.952854+08:00",
@@ -39,8 +39,8 @@
         }
       },
       "period_count": 6,
-      "total_records": 17708,
-      "latest_fetch_time": "2026-03-21T00:14:45.952854+08:00",
+      "total_records": 17712,
+      "latest_fetch_time": "2026-03-22T17:32:13.275450+08:00",
       "latest_data_time": "2026-03-20T15:00:00+08:00",
       "status": "fresh"
     },
@@ -85,7 +85,7 @@
       "total_records": 18708,
       "latest_fetch_time": "2026-03-21T00:15:24.712461+08:00",
       "latest_data_time": "2026-03-20T16:08:00+08:00",
-      "status": "fresh"
+      "status": "stale"
     },
     {
       "type": "stock",
@@ -128,7 +128,7 @@
       "total_records": 15225,
       "latest_fetch_time": "2026-03-21T00:15:20.889254+08:00",
       "latest_data_time": "2026-03-20T16:08:00+08:00",
-      "status": "fresh"
+      "status": "stale"
     }
   ]
 }
