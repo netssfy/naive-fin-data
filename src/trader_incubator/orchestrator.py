@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import time
 from dataclasses import dataclass
@@ -141,6 +142,18 @@ def _run_command(command: list[str], cwd: Path, dry_run: bool) -> int:
     return int(proc.returncode)
 
 
+def _default_codex_bin(project_root: Path) -> str:
+    local_bin = project_root / "apps" / "web" / "node_modules" / ".bin"
+    local_name = "codex.cmd" if os.name == "nt" else "codex"
+    local_path = local_bin / local_name
+    if local_path.exists():
+        return str(local_path)
+    resolved = shutil.which("codex")
+    if resolved:
+        return resolved
+    return "codex"
+
+
 class Orchestrator:
     def __init__(
         self,
@@ -255,7 +268,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--poll-seconds", type=int, default=30, help="main loop polling interval")
     parser.add_argument("--once", action="store_true", help="run only one cycle")
     parser.add_argument("--dry-run", action="store_true", help="print actions without executing child processes")
-    parser.add_argument("--codex-bin", default="codex", help="codex cli executable")
+    parser.add_argument(
+        "--codex-bin",
+        default="",
+        help="codex cli executable (default: auto-detect project-local bin, then PATH)",
+    )
     parser.add_argument("--state-file", default=DEFAULT_STATE_PATH, help="path to state json file")
     parser.add_argument(
         "--print-live-command",
@@ -277,13 +294,14 @@ def main() -> int:
 
     project_root = Path(args.project_root).resolve()
     state_file = Path(args.state_file).resolve()
+    codex_bin = str(args.codex_bin).strip() or _default_codex_bin(project_root)
     orch = Orchestrator(
         project_root=project_root,
         loop_timezone=args.timezone,
         poll_seconds=args.poll_seconds,
         state_file=state_file,
         dry_run=args.dry_run,
-        codex_bin=args.codex_bin,
+        codex_bin=codex_bin,
     )
     return orch.run(once=bool(args.once))
 
