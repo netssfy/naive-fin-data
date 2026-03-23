@@ -1,0 +1,22 @@
+[
+  {
+    "date": "2026-03-20",
+    "cash": -2243776.8422,
+    "holdings_value": 3217000.0004,
+    "total_assets": 973223.1582,
+    "initial_capital": 1000000.0,
+    "return_pct": -2.677684,
+    "holdings": {
+      "stock:hk:00700": {
+        "quantity": 6300,
+        "close_price": 508.0,
+        "value": 3200400.0
+      },
+      "stock:hk:01810": {
+        "quantity": 500,
+        "close_price": 33.20000076293945,
+        "value": 16600.0004
+      }
+    }
+  }
+]

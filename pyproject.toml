@@ -23,13 +23,19 @@ trader-incubator = [
 [tool.setuptools]
 package-dir = {"" = "src"}
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools.packages]
+find = {where = ["src"], include = ["naive_fin_data*"]}
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "--basetemp=.tmp/pytest/basetemp"
+testpaths = ["src/trader_incubator/tests"]
+addopts = "--basetemp=.tmp/pytest/basetemp --ignore=src/trader_incubator/apps"
 cache_dir = ".tmp/pytest/cache"
 markers = [
   "integration: tests that call real AkShare APIs",
 ]
+
+[tool.ruff]
+exclude = ["src/trader_incubator/apps/*/node_modules"]
+
+[tool.mypy]
+exclude = ["src/trader_incubator/apps/.*/node_modules"]

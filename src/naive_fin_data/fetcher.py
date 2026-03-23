@@ -340,7 +340,9 @@ def _update_status(df: pd.DataFrame, target: FetchTarget, output_root: Path | st
     if has_total_records:
         period_status["total_records"] = prev_period_total + new_records
     else:
-        period_status["total_records"] = _count_period_parquet_records(output_root, target)
+        # No prior total: seed from existing parquet files, then add new records from this fetch.
+        seeded = _count_period_parquet_records(output_root, target)
+        period_status["total_records"] = seeded + new_records
 
     periods[current_period] = period_status
     status["periods"] = periods
