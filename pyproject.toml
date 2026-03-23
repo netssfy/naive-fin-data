@@ -18,6 +18,8 @@ dependencies = [
 [project.optional-dependencies]
 trader-incubator = [
   "deerflow",
+  "fastapi>=0.135.0",
+  "uvicorn>=0.42.0",
 ]
 
 [tool.setuptools]

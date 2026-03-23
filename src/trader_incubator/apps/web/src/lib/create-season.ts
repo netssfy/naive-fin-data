@@ -1,6 +1,4 @@
-/**
- * 通过 File System Access API 直接写 season.json 到本地文件系统
- */
+﻿const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || 'http://127.0.0.1:8000'
 
 export type CreateSeasonInput = {
   season: string
@@ -12,44 +10,32 @@ export type CreateSeasonInput = {
   symbol_pool: string[]
 }
 
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9\u4e00-\u9fff-]/g, '')
-}
-
 export async function createSeasonFile(input: CreateSeasonInput): Promise<string> {
-  const slug = slugify(input.season)
-  const now = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
-
-  const seasonJson = {
-    season: input.season,
-    market: input.market,
-    start_date: input.start_date,
-    end_date: input.end_date || null,
-    initial_capital: input.initial_capital,
-    fee_rate: input.fee_rate,
-    symbol_pool: input.symbol_pool,
-    traders: [],
-    created_at: now,
-  }
-
-  const content = JSON.stringify(seasonJson, null, 2)
-
-  // File System Access API
-  const dirHandle = await (window as any).showDirectoryPicker({
-    id: 'seasons-root',
-    mode: 'readwrite',
-    startIn: 'documents',
+  const response = await fetch(`${API_BASE}/api/seasons`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      season: input.season,
+      market: input.market,
+      start_date: input.start_date,
+      end_date: input.end_date || null,
+      initial_capital: input.initial_capital,
+      fee_rate: input.fee_rate,
+      symbol_pool: input.symbol_pool,
+    }),
   })
 
-  // 创建 <slug>/season.json
-  const seasonDirHandle = await dirHandle.getDirectoryHandle(slug, { create: true })
-  const fileHandle = await seasonDirHandle.getFileHandle('season.json', { create: true })
-  const writable = await fileHandle.createWritable()
-  await writable.write(content)
-  await writable.close()
+  if (!response.ok) {
+    let detail = response.statusText
+    try {
+      const body = await response.json()
+      detail = body?.detail ?? detail
+    } catch {
+      // ignore non-json error body
+    }
+    throw new Error(`Create season failed (${response.status}): ${detail}`)
+  }
 
-  return slug
+  const payload = (await response.json()) as { slug: string }
+  return payload.slug
 }

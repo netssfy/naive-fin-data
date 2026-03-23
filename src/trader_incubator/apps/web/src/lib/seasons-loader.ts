@@ -1,10 +1,30 @@
-/**
- * 通过 import.meta.glob 遍历文件系统加载所有 season/trader 数据
- */
+﻿const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || 'http://127.0.0.1:8000'
 
-// ---- season.json ----
+async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+    ...init,
+  })
+
+  if (!response.ok) {
+    let detail = response.statusText
+    try {
+      const body = await response.json()
+      detail = body?.detail ?? detail
+    } catch {
+      // ignore non-json error body
+    }
+    throw new Error(`API ${response.status}: ${detail}`)
+  }
+
+  return (await response.json()) as T
+}
 
 export type SeasonJson = {
+  slug: string
   season: string
   market: string
   start_date: string
@@ -18,6 +38,7 @@ export type SeasonJson = {
 
 export type Season = {
   slug: string
+  name: string
   market: string
   start_date: string
   end_date: string | null
@@ -26,24 +47,17 @@ export type Season = {
   traders: string[]
 }
 
-const seasonModules = import.meta.glob<SeasonJson>(
-  '../../../../core/skills/seasons/*/season.json',
-  { eager: true }
-)
-
-export function loadSeasons(): Season[] {
-  return Object.values(seasonModules).map((json) => ({
-    slug: json.season,
-    market: json.market,
-    start_date: json.start_date,
-    end_date: json.end_date,
-    initial_capital: json.initial_capital,
-    fee_rate: json.fee_rate ?? 0.0004,
-    traders: json.traders.map((t) => t.trader),
-  }))
+export type TraderSummary = {
+  slug: string
+  season_slug: string
+  trader: string
+  season: string
+  style: string
+  program_entry: string
+  initial_capital: number | null
+  symbols: string[]
+  created_at: string
 }
-
-// ---- equity.json ----
 
 export type EquitySnapshot = {
   date: string
@@ -54,29 +68,6 @@ export type EquitySnapshot = {
   return_pct: number
   holdings: Record<string, { quantity: number; close_price: number; value: number }>
 }
-
-const equityModules = import.meta.glob(
-  '../../../../core/skills/seasons/*/traders/*/equity.json',
-  { eager: true, import: 'default' }
-)
-
-/** Returns { [traderSlug]: EquitySnapshot[] } for a given season slug */
-export function loadEquity(seasonSlug: string): Record<string, EquitySnapshot[]> {
-  const result: Record<string, EquitySnapshot[]> = {}
-  for (const [path, snapshots] of Object.entries(equityModules)) {
-    const parts = path.split('/')
-    const traderIdx = parts.indexOf('traders')
-    const seasonIdx = parts.indexOf('seasons')
-    if (seasonIdx === -1 || traderIdx === -1) continue
-    const season = parts[seasonIdx + 1]
-    const trader = parts[traderIdx + 1]
-    if (season !== seasonSlug) continue
-    result[trader] = Array.isArray(snapshots) ? (snapshots as EquitySnapshot[]) : []
-  }
-  return result
-}
-
-// ---- orders.json ----
 
 export type Order = {
   order_id: number
@@ -90,23 +81,28 @@ export type Order = {
   message: string
 }
 
-const orderModules = import.meta.glob(
-  '../../../../core/skills/seasons/*/traders/*/orders.json',
-  { eager: true, import: 'default' }
-)
+export async function loadSeasons(): Promise<Season[]> {
+  const payload = await fetchJson<SeasonJson[]>('/api/seasons')
+  return payload.map((item) => ({
+    slug: item.slug,
+    name: item.season,
+    market: item.market,
+    start_date: item.start_date,
+    end_date: item.end_date,
+    initial_capital: item.initial_capital,
+    fee_rate: item.fee_rate ?? 0.0004,
+    traders: item.traders.map((t) => t.trader),
+  }))
+}
 
-/** Returns { [traderSlug]: Order[] } for a given season slug */
-export function loadOrders(seasonSlug: string): Record<string, Order[]> {
-  const result: Record<string, Order[]> = {}
-  for (const [path, orders] of Object.entries(orderModules)) {
-    const parts = path.split('/')
-    const traderIdx = parts.indexOf('traders')
-    const seasonIdx = parts.indexOf('seasons')
-    if (seasonIdx === -1 || traderIdx === -1) continue
-    const season = parts[seasonIdx + 1]
-    const trader = parts[traderIdx + 1]
-    if (season !== seasonSlug) continue
-    result[trader] = Array.isArray(orders) ? (orders as Order[]) : []
-  }
-  return result
+export async function loadSeasonTraders(seasonSlug: string): Promise<TraderSummary[]> {
+  return await fetchJson<TraderSummary[]>(`/api/seasons/${encodeURIComponent(seasonSlug)}/traders`)
+}
+
+export async function loadEquity(seasonSlug: string): Promise<Record<string, EquitySnapshot[]>> {
+  return await fetchJson<Record<string, EquitySnapshot[]>>(`/api/seasons/${encodeURIComponent(seasonSlug)}/equity`)
+}
+
+export async function loadOrders(seasonSlug: string): Promise<Record<string, Order[]>> {
+  return await fetchJson<Record<string, Order[]>>(`/api/seasons/${encodeURIComponent(seasonSlug)}/orders`)
 }
