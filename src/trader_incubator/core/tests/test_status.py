@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -103,3 +103,4 @@ def test_update_status_migrates_legacy_flat_schema(tmp_path: Path) -> None:
     status = json.loads(status_file.read_text(encoding="utf-8"))
     assert status["periods"]["1m"]["total_records"] == 10
     assert status["periods"]["1d"]["total_records"] == 1
+

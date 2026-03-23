@@ -10,8 +10,8 @@ import akshare as ak
 import pandas as pd
 import yfinance as yf
 
-from trader_incubator.backtest import load_season_strategies
-from trader_incubator.exchange import (
+from backtest import load_season_strategies
+from exchange import (
     Order,
     RealClock,
     SimulatedMatchingEngine,
@@ -20,8 +20,8 @@ from trader_incubator.exchange import (
     _ensure_timezone,
     _floor_to_minute,
 )
-from trader_incubator.persistence import persist_backtest_results
-from trader_incubator.season import Season
+from persistence import persist_backtest_results
+from season import Season
 
 
 _SUPPORTED_PERIODS = {"1m", "5m", "15m", "30m", "60m", "1d"}

@@ -1,12 +1,12 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from trader_incubator.exchange import TradingStrategy
-from trader_incubator.live import LiveExchange
+from exchange import TradingStrategy
+from live import LiveExchange
 
 
 class FakeClock:
@@ -68,8 +68,8 @@ def test_live_exchange_realtime_1m_and_no_future_data(monkeypatch) -> None:
             index=idx,
         )
 
-    monkeypatch.setattr("trader_incubator.live._call_akshare_with_candidates", fake_akshare)
-    monkeypatch.setattr("trader_incubator.live.yf.download", fake_download)
+    monkeypatch.setattr("live._call_akshare_with_candidates", fake_akshare)
+    monkeypatch.setattr("live.yf.download", fake_download)
 
     tz = ZoneInfo("Asia/Shanghai")
     clock = FakeClock(datetime(2026, 3, 20, 9, 30, tzinfo=tz))
@@ -99,3 +99,4 @@ def test_live_exchange_realtime_1m_and_no_future_data(monkeypatch) -> None:
     earliest_start = min(start_values)
     # In UTC, 2026-03-20 09:30+08:00 == 2026-03-20 01:30.
     assert earliest_start.hour == 1 and earliest_start.minute == 30
+

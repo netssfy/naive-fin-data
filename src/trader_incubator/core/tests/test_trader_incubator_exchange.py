@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -8,7 +8,7 @@ import uuid
 
 import pandas as pd
 
-from trader_incubator.exchange import Exchange, TradingSessionConfig, TradingStrategy
+from exchange import Exchange, TradingSessionConfig, TradingStrategy
 
 
 class FakeClock:
@@ -148,3 +148,4 @@ def test_exchange_strategy_helpers_history_and_market_order() -> None:
         assert strategy.trade_history_snapshot[0].symbol_key == "stock:cn:000001"
     finally:
         _cleanup_test_root(root)
+

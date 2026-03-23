@@ -5,7 +5,7 @@ import json
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 
-from trader_incubator.season import slugify, to_module_name
+from season import slugify, to_module_name
 
 
 @dataclass

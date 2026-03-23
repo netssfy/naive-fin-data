@@ -131,3 +131,4 @@ def test_fetch_single_hk_prefers_akshare(monkeypatch) -> None:
     assert set(df["code"].astype(str)) == {"00700"}
     # Keep source timestamp labeling as-is (no forced left alignment shift).
     assert pd.to_datetime(df["timestamp"]).dt.strftime("%Y-%m-%d").tolist() == ["2026-03-19", "2026-03-20"]
+

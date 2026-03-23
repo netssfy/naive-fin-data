@@ -10,10 +10,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..\..")).Path
 $VenvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
 $SystemPython = "python"
-$BacktestScript = Join-Path $ProjectRoot "src\trader_incubator\backtest.py"
+$BacktestScript = Join-Path $ProjectRoot "src\trader_incubator\core\backtest.py"
 
 if (Test-Path $VenvPython) {
     $PythonExe = $VenvPython
@@ -21,7 +21,7 @@ if (Test-Path $VenvPython) {
     $PythonExe = $SystemPython
 }
 
-$env:PYTHONPATH = (Join-Path $ProjectRoot "src")
+$env:PYTHONPATH = (Join-Path $ProjectRoot "src\trader_incubator\core")
 
 $ArgsList = @(
     $BacktestScript,

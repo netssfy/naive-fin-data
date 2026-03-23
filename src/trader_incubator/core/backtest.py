@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from trader_incubator.exchange import (
+from exchange import (
     Order,
     SimulatedMatchingEngine,
     SymbolRef,
@@ -20,9 +20,9 @@ from trader_incubator.exchange import (
     _ensure_timezone,
     _floor_to_minute,
 )
-from trader_incubator.persistence import persist_backtest_results
-from trader_incubator.season import Season
-from trader_incubator.trader import Trader
+from persistence import persist_backtest_results
+from season import Season
+from trader import Trader
 
 
 SUPPORTED_PERIODS: tuple[str, ...] = ("1m", "5m", "15m", "30m", "60m", "1d")
@@ -420,17 +420,31 @@ def _import_program_module(module_name: str, project_root: Path):
     except ModuleNotFoundError:
         pass
 
-    module_path = project_root / "src" / Path(*module_name.split("."))
-    module_file = module_path.with_suffix(".py")
-    if not module_file.exists():
-        raise ModuleNotFoundError(module_name)
-    spec = importlib.util.spec_from_file_location(module_name, module_file)
-    if spec is None or spec.loader is None:
-        raise ModuleNotFoundError(module_name)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
+    normalized_module_names = [module_name]
+    if module_name.startswith("trader_incubator.skills."):
+        normalized_module_names.append(module_name.replace("trader_incubator.skills.", "skills.", 1))
+    if module_name.startswith("trader_incubator.core.skills."):
+        normalized_module_names.append(module_name.replace("trader_incubator.core.", "", 1))
+
+    for candidate in normalized_module_names[1:]:
+        try:
+            return importlib.import_module(candidate)
+        except ModuleNotFoundError:
+            continue
+
+    for candidate in normalized_module_names:
+        module_path = project_root / "src" / Path(*candidate.split("."))
+        module_file = module_path.with_suffix(".py")
+        if not module_file.exists():
+            continue
+        spec = importlib.util.spec_from_file_location(candidate, module_file)
+        if spec is None or spec.loader is None:
+            continue
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[candidate] = module
+        spec.loader.exec_module(module)
+        return module
+    raise ModuleNotFoundError(module_name)
 
 
 def _split_program_entry(program_entry: str) -> tuple[str, str]:

@@ -11,9 +11,9 @@ from datetime import datetime, time as dtime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from trader_incubator.live import list_valid_season_slugs
-from trader_incubator.season import Season
-from trader_incubator.trader import Trader
+from live import list_valid_season_slugs
+from season import Season
+from trader import Trader
 
 
 DEFAULT_STATE_PATH = ".tmp/trader_incubator/orchestrator_state.json"
@@ -207,14 +207,14 @@ class Orchestrator:
         command = [
             "python",
             "-m",
-            "trader_incubator.live",
+            "live",
             "--all-seasons",
             "--project-root",
             str(self.project_root),
         ]
         env = os.environ.copy()
         existing_pythonpath = env.get("PYTHONPATH", "")
-        src_path = str(self.project_root / "src")
+        src_path = str(self.project_root / "src" / "trader_incubator" / "core")
         env["PYTHONPATH"] = src_path if not existing_pythonpath else f"{src_path}{os.pathsep}{existing_pythonpath}"
         if self.dry_run:
             print(f"[DRY-RUN] start live: {command}")
@@ -286,7 +286,7 @@ def main() -> int:
     args = _build_parser().parse_args()
     if args.print_live_command:
         cmd = (
-            "PYTHONPATH=src python -m trader_incubator.live "
+            "PYTHONPATH=src/trader_incubator/core python -m live "
             "--all-seasons --project-root ."
         )
         print(cmd)

@@ -7,7 +7,7 @@ from datetime import datetime, date
 from pathlib import Path
 from typing import Sequence
 
-from trader_incubator.exchange import Order, SimulatedMatchingEngine, SymbolRef
+from exchange import Order, SimulatedMatchingEngine, SymbolRef
 
 
 # ---------------------------------------------------------------------------

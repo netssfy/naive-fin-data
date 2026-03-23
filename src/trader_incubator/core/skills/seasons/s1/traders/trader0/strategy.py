@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import datetime
 import random
@@ -6,7 +6,7 @@ from typing import Mapping
 
 import pandas as pd
 
-from trader_incubator.exchange import TradingStrategy
+from exchange import TradingStrategy
 
 
 class TraderProgram(TradingStrategy):

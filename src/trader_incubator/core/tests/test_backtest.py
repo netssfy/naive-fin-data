@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import importlib
 import json
@@ -7,7 +7,7 @@ import uuid
 
 import pandas as pd
 
-from trader_incubator.backtest import run_season_backtest
+from backtest import run_season_backtest
 
 
 def _write_parquet(root: Path, period: str, timestamps: list[str], closes: list[float]) -> None:
@@ -74,7 +74,7 @@ from typing import Mapping
 
 import pandas as pd
 
-from trader_incubator.exchange import TradingStrategy
+from exchange import TradingStrategy
 
 
 class TraderProgram(TradingStrategy):
@@ -190,7 +190,7 @@ from typing import Mapping
 
 import pandas as pd
 
-from trader_incubator.exchange import TradingStrategy
+from exchange import TradingStrategy
 
 
 class TraderProgram(TradingStrategy):
@@ -270,7 +270,7 @@ from typing import Mapping
 
 import pandas as pd
 
-from trader_incubator.exchange import TradingStrategy
+from exchange import TradingStrategy
 
 
 class TraderProgram(TradingStrategy):
@@ -301,3 +301,5 @@ class TraderProgram(TradingStrategy):
     strategy_module = importlib.import_module(module_name)
     strategy_cls = strategy_module.TraderProgram
     assert strategy_cls.initial_capitals == [12345.0]
+
+

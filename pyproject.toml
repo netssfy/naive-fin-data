@@ -27,7 +27,7 @@ package-dir = {"" = "src"}
 find = {where = ["src"], include = ["naive_fin_data*"]}
 
 [tool.pytest.ini_options]
-testpaths = ["src/trader_incubator/tests"]
+testpaths = ["src/trader_incubator/core/tests"]
 addopts = "--basetemp=.tmp/pytest/basetemp --ignore=src/trader_incubator/apps"
 cache_dir = ".tmp/pytest/cache"
 markers = [
