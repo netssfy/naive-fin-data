@@ -15,14 +15,17 @@ from exchange import Order, SimulatedMatchingEngine, SymbolRef
 # ---------------------------------------------------------------------------
 
 def _trader_dir(project_root: Path, season_slug: str, trader_slug: str) -> Path:
-    primary = project_root / "src" / "trader_incubator" / "skills" / "seasons" / season_slug / "traders" / trader_slug
-    if primary.exists():
-        return primary
-    fallback = project_root / "src" / "trader_incubator" / "core" / "skills" / "seasons" / season_slug / "traders" / trader_slug
-    if fallback.exists():
-        return fallback
-    # default to core path for new writes
-    return fallback
+    return (
+        project_root
+        / "src"
+        / "trader_incubator"
+        / "core"
+        / "skills"
+        / "seasons"
+        / season_slug
+        / "traders"
+        / trader_slug
+    )
 
 
 def orders_path(project_root: Path, season_slug: str, trader_slug: str) -> Path:

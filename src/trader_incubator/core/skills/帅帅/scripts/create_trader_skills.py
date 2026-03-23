@@ -1,4 +1,4 @@
-﻿﻿#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """create_trader_skills.py — 帅帅用来创建交易员 skill 文件的工具脚本。
 
 用法：
@@ -6,7 +6,7 @@
       --season "Season 1" \\
       --trader "Alpha Wolf" \\
       --style "trend-following/intraday/strict-stop-loss" \\
-      --program-entry "trader_incubator.skills.seasons.season-1.traders.alpha-wolf.strategy:TraderProgram" \\
+      --program-entry "trader_incubator.core.skills.seasons.season-1.traders.alpha-wolf.strategy:TraderProgram" \\
       [--symbols 000725 600519 ...] \\
       [--project-root .]
 """
@@ -40,7 +40,7 @@ def create_trader(
     t_tmp = Trader(trader=trader, season=season, style=style, program_entry="", symbols=symbols)
     if not program_entry:
         program_entry = (
-            f"trader_incubator.skills.seasons.{t_tmp.season_module_name}"
+            f"trader_incubator.core.skills.seasons.{t_tmp.season_module_name}"
             f".traders.{t_tmp.module_name}.strategy:TraderProgram"
         )
 
@@ -60,7 +60,7 @@ def create_trader(
 
     # 2. Scaffold skill files
     skill_dir = (
-        project_root / "src" / "trader_incubator" / "skills" / "seasons"
+        project_root / "src" / "trader_incubator" / "core" / "skills" / "seasons"
         / t.season_slug / "traders" / t.slug
     )
     _write_skill_md(skill_dir / "SKILL.md", t)

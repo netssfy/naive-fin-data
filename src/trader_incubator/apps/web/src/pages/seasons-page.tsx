@@ -10,6 +10,7 @@ import {
   type Order,
 } from '@/lib/seasons-loader'
 import { createSeasonFile, type CreateSeasonInput } from '@/lib/create-season'
+import { autoCreateTraderWithCodex } from '@/lib/create-trader'
 
 const COLORS = ['#0891b2', '#059669', '#d97706', '#dc2626', '#7c3aed', '#db2777']
 const PAGE_SIZE = 15
@@ -305,8 +306,17 @@ export function SeasonsPage() {
   const [equity, setEquity] = useState<Record<string, EquitySnapshot[]>>({})
   const [orders, setOrders] = useState<Record<string, Order[]>>({})
   const [showCreate, setShowCreate] = useState(false)
+  const [creatingTrader, setCreatingTrader] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [codexWarning, setCodexWarning] = useState<string | null>(null)
+
+  async function loadSeasonData(seasonSlug: string) {
+    const [t, e, o] = await Promise.all([loadSeasonTraders(seasonSlug), loadEquity(seasonSlug), loadOrders(seasonSlug)])
+    setTraders(t)
+    setEquity(e)
+    setOrders(o)
+  }
 
   async function refreshSeasons(preferredSlug?: string) {
     setLoading(true)
@@ -338,10 +348,7 @@ export function SeasonsPage() {
 
     void (async () => {
       try {
-        const [t, e, o] = await Promise.all([loadSeasonTraders(selected), loadEquity(selected), loadOrders(selected)])
-        setTraders(t)
-        setEquity(e)
-        setOrders(o)
+        await loadSeasonData(selected)
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Failed to load season data')
       }
@@ -353,6 +360,25 @@ export function SeasonsPage() {
   function handleCreated(slug: string) {
     setShowCreate(false)
     void refreshSeasons(slug)
+  }
+
+  async function handleCreateTrader() {
+    if (!selected || creatingTrader) return
+    setCreatingTrader(true)
+    setCodexWarning(null)
+    setError(null)
+    try {
+      const result = await autoCreateTraderWithCodex(selected)
+      if (!result.codex.ok) {
+        setCodexWarning(result.codex.stderr || result.codex.stdout || 'codex exec failed')
+      }
+      await loadSeasonData(selected)
+      await refreshSeasons(selected)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Create trader failed')
+    } finally {
+      setCreatingTrader(false)
+    }
   }
 
   return (
@@ -377,13 +403,24 @@ export function SeasonsPage() {
         </aside>
 
         <div className="panel p-4">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">
-            Traders
-            {selected && <span className="ml-2 font-normal normal-case text-slate-400">· {selectedLabel}</span>}
-          </h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">
+              Traders
+              {selected && <span className="ml-2 font-normal normal-case text-slate-400">· {selectedLabel}</span>}
+            </h2>
+            <button
+              type="button"
+              onClick={() => void handleCreateTrader()}
+              disabled={!selected || creatingTrader}
+              className="rounded border border-stone-300 px-2 py-0.5 text-[11px] text-slate-600 transition-colors hover:border-cyan-500 hover:text-cyan-700 disabled:opacity-40"
+            >
+              {creatingTrader ? 'Creating...' : '+ Trader'}
+            </button>
+          </div>
 
           {loading && <p className="text-sm text-slate-400">Loading...</p>}
           {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
+          {codexWarning && <p className="mb-3 text-xs text-amber-600">Trader created, but Codex post-step failed: {codexWarning}</p>}
 
           {!loading && traders.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2">

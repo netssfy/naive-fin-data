@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k \"npm:dev:web\" \"npm:dev:api\"",
+    "dev": "npm run dev:web",
+    "dev:all": "concurrently -k \"npm:dev:web\" \"npm:dev:api\"",
     "dev:web": "vite",
     "dev:api": "..\\\\..\\\\..\\\\..\\\\.venv\\\\Scripts\\\\python.exe ..\\\\..\\\\core\\\\server.py",
     "build": "tsc -b && vite build",

@@ -11,7 +11,7 @@
 ## 执行步骤
 
 ### 1. 读取赛季信息
-确认 `skills/seasons/<season-slug>/season.json` 存在。若不存在，先执行创建赛季流程。
+确认 `core/skills/seasons/<season-slug>/season.json` 存在。若不存在，先执行创建赛季流程。
 
 ### 2. 设计交易员
 - 参考 `references/style_axes.md` 选取风格组合
@@ -23,7 +23,7 @@
     - 可以是中文名或英文名，符合人类真实命名习惯（不要机械拼接风格词）
     - 示例：趋势追踪+激进风格 → `陈破浪` 或 `Chase Ryder`；均值回归+低换手 → `林静水` 或 `Miles Calm`
   - `style`：风格描述，如 `trend-following/intraday/strict-stop-loss`
-  - `program_entry`：策略类入口，格式为 `trader_incubator.skills.seasons.<season-slug>.traders.<trader-slug>.strategy:TraderProgram`
+  - `program_entry`：策略类入口，格式为 `trader_incubator.core.skills.seasons.<season-slug>.traders.<trader-slug>.strategy:TraderProgram`
 
 ### 3. 为每个交易员调用脚本
 ```bash
@@ -43,7 +43,7 @@ python scripts/create_trader_skills.py \
 
 ## 生成的文件结构
 ```
-src/trader_incubator/skills/seasons/<season-slug>/traders/<trader-slug>/
+src/trader_incubator/core/skills/seasons/<season-slug>/traders/<trader-slug>/
 ├── trader.json
 ├── SKILL.md
 ├── strategy.py          ← 继承 TradingStrategy，由 AI 实现交易逻辑
@@ -57,7 +57,7 @@ src/trader_incubator/skills/seasons/<season-slug>/traders/<trader-slug>/
   "trader": "Alpha Wolf",
   "season": "Season 1",
   "style": "trend-following/intraday/strict-stop-loss",
-  "program_entry": "trader_incubator.skills.seasons.season-1.traders.alpha-wolf.strategy:TraderProgram",
+  "program_entry": "trader_incubator.core.skills.seasons.season-1.traders.alpha-wolf.strategy:TraderProgram",
   "symbols": ["000725", "600519"],
   "created_at": "2026-01-01T00:00:00Z"
 }

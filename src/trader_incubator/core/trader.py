@@ -92,15 +92,16 @@ class Trader:
 
     @classmethod
     def load_all(cls, season_slug: str, project_root: Path | str = ".") -> list[Trader]:
-        primary_dir = (
+        traders_dir = (
             Path(project_root)
-            / "src" / "trader_incubator" / "skills" / "seasons" / season_slug / "traders"
+            / "src"
+            / "trader_incubator"
+            / "core"
+            / "skills"
+            / "seasons"
+            / season_slug
+            / "traders"
         )
-        fallback_dir = (
-            Path(project_root)
-            / "src" / "trader_incubator" / "core" / "skills" / "seasons" / season_slug / "traders"
-        )
-        traders_dir = primary_dir if primary_dir.exists() else fallback_dir
         traders: list[Trader] = []
         if not traders_dir.exists():
             return traders
@@ -113,18 +114,8 @@ class Trader:
 
 
 def _trader_json_path(season_slug: str, trader_slug: str, project_root: Path) -> Path:
-    primary = (
-        project_root
-        / "src" / "trader_incubator" / "skills" / "seasons"
-        / season_slug / "traders" / trader_slug / "trader.json"
-    )
-    if primary.exists():
-        return primary
-    fallback = (
+    return (
         project_root
         / "src" / "trader_incubator" / "core" / "skills" / "seasons"
         / season_slug / "traders" / trader_slug / "trader.json"
     )
-    if fallback.exists():
-        return fallback
-    return primary

@@ -7,7 +7,7 @@
 - 交易执行与基础抽象（`exchange.py`）
 - 赛季/交易员模型（`season.py`、`trader.py`）
 - 包导出层（`__init__.py`）
-- 当前示例策略与辅助脚本（`skills/seasons/...`、`skills/帅帅/scripts/...`）
+- 当前示例策略与辅助脚本（`core/skills/seasons/...`、`core/skills/帅帅/scripts/...`）
 
 不包含前端与可视化实现（当前目录无相关源码）。
 
@@ -32,11 +32,10 @@
 - `__init__.py`：包级 API 导出与 `LiveExchange` 惰性导入
 
 ### 3.2 赛季资产与脚本
-- `skills/seasons/<season>/season.json`：赛季配置
-- `skills/seasons/<season>/traders/<trader>/trader.json`：交易员配置
-- `skills/seasons/<season>/traders/<trader>/strategy.py`：策略代码入口
-- `skills/帅帅/scripts/season_manager.py`：创建/查看赛季配置
-- `skills/帅帅/scripts/create_trader_skills.py`：创建交易员目录、策略模板并回写赛季 roster
+- `core/skills/seasons/<season>/season.json`：赛季配置
+- `core/skills/seasons/<season>/traders/<trader>/trader.json`：交易员配置
+- `core/skills/seasons/<season>/traders/<trader>/strategy.py`：策略代码入口
+- `core/skills/帅帅/scripts/create_trader_skills.py`：创建交易员目录、策略模板并回写赛季 roster
 
 ## 4. 运行时流程
 
@@ -62,7 +61,7 @@
 5. 达到 `max_minutes` 或 `end_time` 后结束，返回分钟数与订单列表。
 
 ### 4.3 多赛季实盘流程（`run_all_seasons_live`）
-1. 扫描 `skills/seasons/*/season.json` 并筛选“有效 season”：
+1. 扫描 `core/skills/seasons/*/season.json` 并筛选“有效 season”：
 - `start_date <= today`
 - `end_date` 为空或 `end_date >= today`
 2. 每个 season 创建一个独立 `LiveExchange`（独立撮合引擎、独立持仓与订单账本）。
@@ -149,8 +148,8 @@
 
 ## 6. 数据与文件约定
 - 历史行情目录：`<project>/data/<type>/<market>/<code>/<period>/*.parquet`
-- 赛季配置：`src/trader_incubator/skills/seasons/<season_slug>/season.json`
-- 交易员配置：`src/trader_incubator/skills/seasons/<season_slug>/traders/<trader_slug>/trader.json`
+- 赛季配置：`src/trader_incubator/core/skills/seasons/<season_slug>/season.json`
+- 交易员配置：`src/trader_incubator/core/skills/seasons/<season_slug>/traders/<trader_slug>/trader.json`
 - 策略入口：`program_entry` 采用 `module.path:ClassName`
 
 ## 7. 关键设计决策（当前实现）
@@ -168,7 +167,7 @@
 - 文档 `epic.md` 体现了远期目标，和当前落地实现之间仍有功能差距（例如非交易时段策略演化流程仍未在核心引擎实现）。
 
 ## 9. 示例策略现状
-`skills/seasons/s1/traders/trader0/strategy.py` 中的 `TraderProgram` 是测试策略：
+`core/skills/seasons/s1/traders/trader0/strategy.py` 中的 `TraderProgram` 是测试策略：
 - 每 5 分钟随机挑选一个可用 symbol
 - 随机买卖与手数
 - 卖出时会检查持仓，避免负持仓

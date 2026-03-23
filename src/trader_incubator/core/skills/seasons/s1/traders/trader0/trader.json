@@ -2,7 +2,7 @@
   "trader": "trader0",
   "season": "s1",
   "style": "random-test/5m",
-  "program_entry": "trader_incubator.skills.seasons.s1.traders.trader0.strategy:TraderProgram",
+  "program_entry": "trader_incubator.core.skills.seasons.s1.traders.trader0.strategy:TraderProgram",
   "initial_capital": 1000000.0,
   "symbols": [
     "01810",

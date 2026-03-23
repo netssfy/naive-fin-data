@@ -32,10 +32,10 @@ def _write_parquet(root: Path, period: str, timestamps: list[str], closes: list[
 def test_run_season_backtest_minute_step_and_no_future_data(tmp_path: Path) -> None:
     season_slug = f"bt{uuid.uuid4().hex[:6]}"
     trader_slug = "alice"
-    module_name = f"trader_incubator.skills.seasons.{season_slug}.traders.{trader_slug}.strategy"
+    module_name = f"trader_incubator.core.skills.seasons.{season_slug}.traders.{trader_slug}.strategy"
     program_entry = f"{module_name}:TraderProgram"
 
-    season_dir = tmp_path / "src" / "trader_incubator" / "skills" / "seasons" / season_slug
+    season_dir = tmp_path / "src" / "trader_incubator" / "core" / "skills" / "seasons" / season_slug
     trader_dir = season_dir / "traders" / trader_slug
     trader_dir.mkdir(parents=True, exist_ok=True)
 
@@ -147,10 +147,10 @@ class TraderProgram(TradingStrategy):
 def test_run_season_backtest_uses_season_initial_capital_for_trader(tmp_path: Path) -> None:
     season_slug = f"cap{uuid.uuid4().hex[:6]}"
     trader_slug = "cap-trader"
-    module_name = f"trader_incubator.skills.seasons.{season_slug}.traders.{trader_slug}.strategy"
+    module_name = f"trader_incubator.core.skills.seasons.{season_slug}.traders.{trader_slug}.strategy"
     program_entry = f"{module_name}:TraderProgram"
 
-    season_dir = tmp_path / "src" / "trader_incubator" / "skills" / "seasons" / season_slug
+    season_dir = tmp_path / "src" / "trader_incubator" / "core" / "skills" / "seasons" / season_slug
     trader_dir = season_dir / "traders" / trader_slug
     trader_dir.mkdir(parents=True, exist_ok=True)
 
@@ -226,10 +226,10 @@ class TraderProgram(TradingStrategy):
 def test_run_season_backtest_prefers_trader_initial_capital_override(tmp_path: Path) -> None:
     season_slug = f"ovr{uuid.uuid4().hex[:6]}"
     trader_slug = "ovr-trader"
-    module_name = f"trader_incubator.skills.seasons.{season_slug}.traders.{trader_slug}.strategy"
+    module_name = f"trader_incubator.core.skills.seasons.{season_slug}.traders.{trader_slug}.strategy"
     program_entry = f"{module_name}:TraderProgram"
 
-    season_dir = tmp_path / "src" / "trader_incubator" / "skills" / "seasons" / season_slug
+    season_dir = tmp_path / "src" / "trader_incubator" / "core" / "skills" / "seasons" / season_slug
     trader_dir = season_dir / "traders" / trader_slug
     trader_dir.mkdir(parents=True, exist_ok=True)
 

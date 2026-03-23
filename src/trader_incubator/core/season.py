@@ -165,12 +165,13 @@ class Season:
 
 
 def _season_json_path(season_slug: str, project_root: Path) -> Path:
-    # Primary: src/trader_incubator/skills/seasons/{slug}/season.json
-    primary = project_root / "src" / "trader_incubator" / "skills" / "seasons" / season_slug / "season.json"
-    if primary.exists():
-        return primary
-    # Fallback: src/trader_incubator/core/skills/seasons/{slug}/season.json
-    fallback = project_root / "src" / "trader_incubator" / "core" / "skills" / "seasons" / season_slug / "season.json"
-    if fallback.exists():
-        return fallback
-    return primary  # return primary so error message is meaningful
+    return (
+        project_root
+        / "src"
+        / "trader_incubator"
+        / "core"
+        / "skills"
+        / "seasons"
+        / season_slug
+        / "season.json"
+    )

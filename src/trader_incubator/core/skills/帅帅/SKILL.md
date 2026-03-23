@@ -1,17 +1,16 @@
+﻿---
+name: 甯呭竻
+description: 浜ゆ槗鍛樺鍖栧櫒銆傝礋璐ｅ垱寤鸿禌瀛ｅ拰浜ゆ槗鍛橈紝鐢?AI Coding Agent 椹卞姩鎵ц銆?
 ---
-name: 帅帅
-description: 交易员孵化器。负责创建赛季和交易员，由 AI Coding Agent 驱动执行。
----
 
-# 帅帅
+# 甯呭竻
 
-## 我能做什么
+## 鎴戣兘鍋氫粈涔?
 
-| 用户意图 | 执行哪个子功能 |
+| 鐢ㄦ埛鎰忓浘 | 鎵ц鍝釜瀛愬姛鑳?|
 |----------|---------------|
-| 创建一个新赛季 | 读取 `references/create_season.md` |
-| 为某个赛季创建交易员 | 读取 `references/create_trader.md` |
+| 涓烘煇涓禌瀛ｅ垱寤轰氦鏄撳憳 | 璇诲彇 `references/create_trader.md` |
 
-## 数据参考
+## 鏁版嵁鍙傝€?
 
-- `references/style_axes.md` — 交易员风格轴，用于保证风格多样性
+- `references/style_axes.md` 鈥?浜ゆ槗鍛橀鏍艰酱锛岀敤浜庝繚璇侀鏍煎鏍锋€?

@@ -122,3 +122,33 @@ def test_server_trader_crud(tmp_path: Path) -> None:
     res = client.delete("/api/seasons/s1/traders/alice-pro")
     assert res.status_code == 200
     assert not _trader_json(tmp_path, "s1", "alice-pro").exists()
+
+
+def test_server_create_trader_with_codex(tmp_path: Path) -> None:
+    client = TestClient(create_app(project_root=tmp_path))
+    client.post(
+        "/api/seasons",
+        json={
+            "season": "S2",
+            "market": "US",
+            "start_date": "2026-03-01",
+            "end_date": "2026-03-31",
+            "initial_capital": 2000000,
+            "fee_rate": 0.0005,
+            "symbol_pool": ["AAPL", "MSFT"],
+        },
+    )
+
+    res = client.post(
+        "/api/seasons/s2/traders/codex",
+        json={
+            "trader": "Nova Hawk",
+            "style": "trend-following/swing/risk-budget",
+            "symbols": ["AAPL"],
+        },
+    )
+    assert res.status_code == 201
+    payload = res.json()
+    assert payload["trader"]["slug"] == "nova-hawk"
+    assert isinstance(payload["codex"]["ok"], bool)
+    assert _trader_json(tmp_path, "s2", "nova-hawk").exists()

@@ -421,8 +421,6 @@ def _import_program_module(module_name: str, project_root: Path):
         pass
 
     normalized_module_names = [module_name]
-    if module_name.startswith("trader_incubator.skills."):
-        normalized_module_names.append(module_name.replace("trader_incubator.skills.", "skills.", 1))
     if module_name.startswith("trader_incubator.core.skills."):
         normalized_module_names.append(module_name.replace("trader_incubator.core.", "", 1))
 

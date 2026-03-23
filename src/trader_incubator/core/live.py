@@ -585,7 +585,7 @@ def list_valid_season_slugs(
     timezone: str = "Asia/Shanghai",
     as_of: date | None = None,
 ) -> list[str]:
-    base_dir = Path(project_root) / "src" / "trader_incubator" / "skills" / "seasons"
+    base_dir = Path(project_root) / "src" / "trader_incubator" / "core" / "skills" / "seasons"
     if not base_dir.exists():
         return []
 

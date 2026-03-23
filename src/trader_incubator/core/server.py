@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -157,6 +158,15 @@ class TraderUpdateRequest(BaseModel):
     symbols: list[str] | None = None
 
 
+class TraderCreateWithCodexRequest(BaseModel):
+    trader: str | None = None
+    style: str | None = None
+    program_entry: str | None = None
+    symbols: list[str] = Field(default_factory=list)
+    codex_bin: str | None = None
+    desired_count: int = 1
+
+
 def create_app(project_root: Path | str | None = None) -> FastAPI:
     resolved_root = Path(project_root) if project_root is not None else _default_project_root()
     resolved_root = resolved_root.resolve()
@@ -306,7 +316,9 @@ def create_app(project_root: Path | str | None = None) -> FastAPI:
         if not trader.program_entry:
             season_module = to_module_name(season.season)
             trader_module = trader.module_name
-            trader.program_entry = f"skills.seasons.{season_module}.traders.{trader_module}.strategy:TraderProgram"
+            trader.program_entry = (
+                f"trader_incubator.core.skills.seasons.{season_module}.traders.{trader_module}.strategy:TraderProgram"
+            )
 
         trader_json = _trader_json_path(project_root, season_slug, trader.slug)
         if trader_json.exists():
@@ -324,6 +336,116 @@ def create_app(project_root: Path | str | None = None) -> FastAPI:
         )
         _write_season(project_root=project_root, season=season)
         return _trader_to_response(trader)
+
+    @app.post("/api/seasons/{season_slug}/traders/codex", status_code=201)
+    def create_trader_with_codex(season_slug: str, payload: TraderCreateWithCodexRequest) -> dict[str, Any]:
+        project_root = app.state.project_root
+        season = _load_season_or_404(project_root, season_slug)
+        codex_bin = (payload.codex_bin or "").strip() or "codex"
+
+        # Manual mode: caller provides trader/style and server scaffolds first.
+        if payload.trader and payload.style:
+            trader_slug = slugify(payload.trader)
+            if _trader_json_path(project_root, season_slug, trader_slug).exists():
+                raise HTTPException(status_code=409, detail=f"trader already exists: {season_slug}/{trader_slug}")
+
+            trader = Trader(
+                trader=payload.trader,
+                season=season.season,
+                style=payload.style,
+                program_entry=payload.program_entry or "",
+                initial_capital=season.initial_capital,
+                symbols=list(payload.symbols),
+                created_at=_utc_now(),
+            )
+            if not trader.program_entry:
+                season_module = to_module_name(season.season)
+                trader_module = trader.module_name
+                trader.program_entry = (
+                    f"trader_incubator.core.skills.seasons.{season_module}.traders.{trader_module}.strategy:TraderProgram"
+                )
+            _write_trader(project_root=project_root, season_slug=season_slug, trader=trader)
+            _ensure_strategy_template(_strategy_py_path(project_root, season_slug, trader.slug))
+            season.add_trader(
+                SeasonTraderRef(
+                    trader=trader.trader,
+                    style=trader.style,
+                    program_entry=trader.program_entry,
+                )
+            )
+            _write_season(project_root=project_root, season=season)
+
+            strategy_path = _strategy_py_path(project_root=project_root, season_slug=season_slug, trader_slug=trader.slug)
+            codex_prompt = (
+                "Use $shuaishuai to follow trader creation conventions.\n"
+                f"Improve this strategy file only: {strategy_path}\n"
+                f"Season: {season.season} ({season.market}), Trader: {trader.trader}, Style: {trader.style}\n"
+                f"Allowed symbols: {trader.symbols if trader.symbols else season.symbol_pool}\n"
+                "Implement practical on_minute logic and keep code executable.\n"
+                "Do not modify other files."
+            )
+        else:
+            if payload.trader or payload.style:
+                raise HTTPException(status_code=422, detail="trader and style must be provided together")
+            before = {item.slug for item in Trader.load_all(season_slug=season_slug, project_root=project_root)}
+            script_path = (
+                project_root
+                / "src"
+                / "trader_incubator"
+                / "core"
+                / "skills"
+                / "帅帅"
+                / "scripts"
+                / "create_trader_skills.py"
+            )
+            season_json = _season_json_path(project_root=project_root, season_slug=season_slug)
+            desired_count = max(int(payload.desired_count or 1), 1)
+            codex_prompt = (
+                "Use $shuaishuai and follow references/create_trader.md.\n"
+                f"Create exactly {desired_count} new trader(s) for season '{season.season}' (slug '{season_slug}').\n"
+                f"Season config path: {season_json}\n"
+                f"Use script: {script_path}\n"
+                f"Market: {season.market}. Season symbol_pool: {season.symbol_pool}\n"
+                "Each trader must have distinct style. Run the script(s) to create trader skill folders and update season roster.\n"
+                "Only change files under src/trader_incubator/core/skills/seasons/<season-slug>/traders and the season.json roster."
+            )
+
+        try:
+            codex = subprocess.run(
+                [codex_bin, "exec", codex_prompt],
+                cwd=str(project_root),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
+            codex_payload = {
+                "ok": codex.returncode == 0,
+                "code": codex.returncode,
+                "stdout": (codex.stdout or "").strip(),
+                "stderr": (codex.stderr or "").strip(),
+            }
+        except OSError as exc:
+            codex_payload = {
+                "ok": False,
+                "code": -1,
+                "stdout": "",
+                "stderr": str(exc),
+            }
+        if payload.trader and payload.style:
+            return {"trader": _trader_to_response(trader), "codex": codex_payload}
+
+        after = {item.slug for item in Trader.load_all(season_slug=season_slug, project_root=project_root)}
+        created_slugs = sorted(after - before)
+        if not created_slugs:
+            detail = codex_payload["stderr"] or codex_payload["stdout"] or "codex did not create any trader"
+            raise HTTPException(status_code=500, detail=detail)
+        created = [
+            _trader_to_response(_load_trader_or_404(project_root, season_slug, slug))
+            for slug in created_slugs
+        ]
+        return {"traders": created, "codex": codex_payload}
 
     @app.get("/api/seasons/{season_slug}/traders/{trader_slug}")
     def get_trader(season_slug: str, trader_slug: str) -> dict[str, Any]:
