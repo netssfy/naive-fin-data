@@ -307,6 +307,7 @@ export function SeasonsPage() {
   const [orders, setOrders] = useState<Record<string, Order[]>>({})
   const [showCreate, setShowCreate] = useState(false)
   const [creatingTrader, setCreatingTrader] = useState(false)
+  const [codexLogs, setCodexLogs] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [codexWarning, setCodexWarning] = useState<string | null>(null)
@@ -365,10 +366,20 @@ export function SeasonsPage() {
   async function handleCreateTrader() {
     if (!selected || creatingTrader) return
     setCreatingTrader(true)
+    setCodexLogs([])
     setCodexWarning(null)
     setError(null)
     try {
-      const result = await autoCreateTraderWithCodex(selected)
+      const result = await autoCreateTraderWithCodex(selected, (event) => {
+        if (event.type === 'status' && event.message) {
+          setCodexLogs((prev) => [...prev, `[status] ${event.message}`].slice(-200))
+          return
+        }
+        if (event.type === 'log' && event.message) {
+          const message = event.message
+          setCodexLogs((prev) => [...prev, message].slice(-200))
+        }
+      })
       if (!result.codex.ok) {
         setCodexWarning(result.codex.stderr || result.codex.stdout || 'codex exec failed')
       }
@@ -421,6 +432,14 @@ export function SeasonsPage() {
           {loading && <p className="text-sm text-slate-400">Loading...</p>}
           {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
           {codexWarning && <p className="mb-3 text-xs text-amber-600">Trader created, but Codex post-step failed: {codexWarning}</p>}
+          {codexLogs.length > 0 && (
+            <div className="mb-3 rounded border border-stone-300 bg-stone-50 p-2">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Codex Progress</p>
+              <pre className="max-h-40 overflow-auto whitespace-pre-wrap text-[11px] leading-5 text-slate-700">
+                {codexLogs.join('\n')}
+              </pre>
+            </div>
+          )}
 
           {!loading && traders.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2">

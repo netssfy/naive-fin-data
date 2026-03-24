@@ -11,6 +11,24 @@ import time as time_module
 import pandas as pd
 
 
+MARKET_TIMEZONE = {
+    "a_share": "Asia/Shanghai",
+    "ashare": "Asia/Shanghai",
+    "cn": "Asia/Shanghai",
+    "china": "Asia/Shanghai",
+    "hk": "Asia/Hong_Kong",
+    "hkex": "Asia/Hong_Kong",
+    "us": "America/New_York",
+    "usa": "America/New_York",
+}
+
+MARKET_SESSIONS = {
+    "cn": [(time(9, 30), time(11, 30)), (time(13, 0), time(15, 0))],
+    "hk": [(time(9, 30), time(12, 0)), (time(13, 0), time(16, 0))],
+    "us": [(time(9, 30), time(16, 0))],
+}
+
+
 @dataclass(frozen=True)
 class SymbolRef:
     code: str
@@ -53,6 +71,14 @@ class SessionWindow:
     pre_open_at: datetime
     open_at: datetime
     close_at: datetime
+
+
+@dataclass(frozen=True)
+class MarketCloseEvent:
+    market: str
+    trading_day: date
+    triggered_at: datetime
+    timezone: str
 
 
 @dataclass(frozen=True)
@@ -480,6 +506,62 @@ class Exchange:
         now = self.clock.now()
         seconds = (target_ts - now).total_seconds()
         self.clock.sleep(max(seconds, 0.0))
+
+
+class MarketCloseEventDetector:
+    """Detect a one-shot market-close event per market and trading day."""
+
+    def __init__(self, market: str) -> None:
+        self.market = normalize_market(market)
+        self._timezone_name = MARKET_TIMEZONE.get(self.market, "Asia/Shanghai")
+        self._tz = ZoneInfo(self._timezone_name)
+        self._sessions = MARKET_SESSIONS.get(self.market, [])
+        self._last_observed_day: date | None = None
+        self._was_open = False
+        self._last_trigger_day: date | None = None
+
+    def observe(self, now: datetime) -> MarketCloseEvent | None:
+        if not self._sessions:
+            return None
+        local_now = _ensure_timezone(now, self._tz)
+        trading_day = local_now.date()
+        if self._last_observed_day != trading_day:
+            self._last_observed_day = trading_day
+            self._was_open = False
+
+        if trading_day.weekday() >= 5:
+            self._was_open = False
+            return None
+
+        is_open = _in_session(local_now.time(), self._sessions)
+        is_after_final_close = local_now.time() >= self._sessions[-1][1]
+        should_fire = self._was_open and (not is_open) and is_after_final_close and self._last_trigger_day != trading_day
+        self._was_open = is_open
+
+        if not should_fire:
+            return None
+        self._last_trigger_day = trading_day
+        return MarketCloseEvent(
+            market=self.market,
+            trading_day=trading_day,
+            triggered_at=local_now,
+            timezone=self._timezone_name,
+        )
+
+
+def normalize_market(raw_market: str) -> str:
+    text = str(raw_market).strip().lower()
+    if text in {"a_share", "ashare", "cn", "china"}:
+        return "cn"
+    if text in {"hk", "hkex"}:
+        return "hk"
+    if text in {"us", "usa"}:
+        return "us"
+    return text
+
+
+def _in_session(current: time, sessions: Sequence[tuple[time, time]]) -> bool:
+    return any(start_at <= current < end_at for start_at, end_at in sessions)
 
 
 def _build_session_window(trading_day: date, config: TradingSessionConfig, tz: ZoneInfo) -> SessionWindow:

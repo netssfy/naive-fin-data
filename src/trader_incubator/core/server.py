@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import os
 import shutil
 import subprocess
 import traceback
@@ -13,7 +15,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -21,6 +23,7 @@ logger = logging.getLogger(__name__)
 from live import run_all_seasons_live
 from season import Season, SeasonTraderRef, slugify, to_module_name
 from trader import Trader
+from trader_research import default_codex_bin
 
 _live_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="live-runner")
 
@@ -58,12 +61,44 @@ def _strategy_py_path(project_root: Path, season_slug: str, trader_slug: str) ->
     return _trader_dir(project_root, season_slug, trader_slug) / "strategy.py"
 
 
+def _strategy_path_from_program_entry(project_root: Path, program_entry: str, fallback: Path) -> Path:
+    module_name = str(program_entry).split(":", 1)[0].strip()
+    if not module_name:
+        return fallback
+    return project_root / "src" / Path(*module_name.split(".")).with_suffix(".py")
+
+
+def _candidate_codex_bins(project_root: Path, requested: str | None) -> list[str]:
+    local_name = "codex.cmd" if os.name == "nt" else "codex"
+    candidates: list[str] = []
+    raw = (requested or "").strip()
+    if raw:
+        candidates.append(raw)
+    auto = default_codex_bin(project_root)
+    if auto:
+        candidates.append(auto)
+    candidates.extend(
+        [
+            str(project_root / "apps" / "web" / "node_modules" / ".bin" / local_name),
+            str(project_root / "src" / "trader_incubator" / "apps" / "web" / "node_modules" / ".bin" / local_name),
+            "codex",
+        ]
+    )
+    uniq: list[str] = []
+    seen: set[str] = set()
+    for item in candidates:
+        key = item.strip()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        uniq.append(key)
+    return uniq
+
+
 def _read_json_file(path: Path) -> Any:
     if not path.exists():
         return []
     try:
-        import json
-
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return []
@@ -176,6 +211,7 @@ class TraderCreateWithCodexRequest(BaseModel):
     symbols: list[str] = Field(default_factory=list)
     codex_bin: str | None = None
     desired_count: int = 1
+    stream: bool = False
 
 
 def create_app(project_root: Path | str | None = None) -> FastAPI:
@@ -367,7 +403,12 @@ def create_app(project_root: Path | str | None = None) -> FastAPI:
             raise HTTPException(status_code=409, detail=f"trader already exists: {season_slug}/{trader.slug}")
 
         _write_trader(project_root=project_root, season_slug=season_slug, trader=trader)
-        _ensure_strategy_template(_strategy_py_path(project_root, season_slug, trader.slug))
+        strategy_path = _strategy_path_from_program_entry(
+            project_root=project_root,
+            program_entry=trader.program_entry,
+            fallback=_strategy_py_path(project_root, season_slug, trader.slug),
+        )
+        _ensure_strategy_template(strategy_path)
 
         season.add_trader(
             SeasonTraderRef(
@@ -380,10 +421,10 @@ def create_app(project_root: Path | str | None = None) -> FastAPI:
         return _trader_to_response(trader)
 
     @app.post("/api/seasons/{season_slug}/traders/codex", status_code=201)
-    def create_trader_with_codex(season_slug: str, payload: TraderCreateWithCodexRequest) -> dict[str, Any]:
+    def create_trader_with_codex(season_slug: str, payload: TraderCreateWithCodexRequest):
         project_root = app.state.project_root
         season = _load_season_or_404(project_root, season_slug)
-        codex_bin = (payload.codex_bin or "").strip() or "codex"
+        codex_bin_candidates = _candidate_codex_bins(project_root, payload.codex_bin)
 
         # Manual mode: caller provides trader/style and server scaffolds first.
         if payload.trader and payload.style:
@@ -407,7 +448,12 @@ def create_app(project_root: Path | str | None = None) -> FastAPI:
                     f"trader_incubator.core.skills.seasons.{season_module}.traders.{trader_module}.strategy:TraderProgram"
                 )
             _write_trader(project_root=project_root, season_slug=season_slug, trader=trader)
-            _ensure_strategy_template(_strategy_py_path(project_root, season_slug, trader.slug))
+            strategy_path = _strategy_path_from_program_entry(
+                project_root=project_root,
+                program_entry=trader.program_entry,
+                fallback=_strategy_py_path(project_root, season_slug, trader.slug),
+            )
+            _ensure_strategy_template(strategy_path)
             season.add_trader(
                 SeasonTraderRef(
                     trader=trader.trader,
@@ -417,7 +463,6 @@ def create_app(project_root: Path | str | None = None) -> FastAPI:
             )
             _write_season(project_root=project_root, season=season)
 
-            strategy_path = _strategy_py_path(project_root=project_root, season_slug=season_slug, trader_slug=trader.slug)
             codex_prompt = (
                 "Use $shuaishuai to follow trader creation conventions.\n"
                 f"Improve this strategy file only: {strategy_path}\n"
@@ -452,49 +497,118 @@ def create_app(project_root: Path | str | None = None) -> FastAPI:
                 "Only change files under src/trader_incubator/core/skills/seasons/<season-slug>/traders and the season.json roster."
             )
 
-        try:
-            codex = subprocess.run(
-                [codex_bin, "exec", codex_prompt],
-                cwd=str(project_root),
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                check=False,
-            )
-            codex_payload = {
-                "ok": codex.returncode == 0,
-                "code": codex.returncode,
-                "stdout": (codex.stdout or "").strip(),
-                "stderr": (codex.stderr or "").strip(),
-            }
-        except OSError as exc:
-            codex_payload = {
-                "ok": False,
-                "code": -1,
-                "stdout": "",
-                "stderr": str(exc),
-            }
-        if payload.trader and payload.style:
-            return {"trader": _trader_to_response(trader), "codex": codex_payload}
+        def _build_response_payload(codex_result: dict[str, Any], fail_on_empty: bool) -> dict[str, Any]:
+            if payload.trader and payload.style:
+                return {"trader": _trader_to_response(trader), "codex": codex_result}
+            after = {item.slug for item in Trader.load_all(season_slug=season_slug, project_root=project_root)}
+            created_slugs = sorted(after - before)
+            if not created_slugs:
+                detail = codex_result["stderr"] or codex_result["stdout"] or "codex did not create any trader"
+                logger.error(
+                    "codex did not create any trader for season '%s'\nreturncode: %s\nstdout: %s\nstderr: %s",
+                    season_slug,
+                    codex_result.get("code"),
+                    codex_result.get("stdout"),
+                    codex_result.get("stderr"),
+                )
+                if fail_on_empty:
+                    raise HTTPException(status_code=500, detail=detail)
+                return {"traders": [], "codex": codex_result, "error": detail}
+            created = [
+                _trader_to_response(_load_trader_or_404(project_root, season_slug, slug))
+                for slug in created_slugs
+            ]
+            return {"traders": created, "codex": codex_result}
 
-        after = {item.slug for item in Trader.load_all(season_slug=season_slug, project_root=project_root)}
-        created_slugs = sorted(after - before)
-        if not created_slugs:
-            detail = codex_payload["stderr"] or codex_payload["stdout"] or "codex did not create any trader"
-            logger.error(
-                "codex did not create any trader for season '%s'\nreturncode: %s\nstdout: %s\nstderr: %s",
-                season_slug,
-                codex_payload.get("code"),
-                codex_payload.get("stdout"),
-                codex_payload.get("stderr"),
+        if payload.stream:
+            def _iter_events():
+                yield json.dumps({"type": "status", "message": "codex task queued"}, ensure_ascii=False) + "\n"
+                last_os_error = ""
+                codex_result = {"ok": False, "code": -1, "stdout": "", "stderr": ""}
+                for codex_bin in codex_bin_candidates:
+                    yield json.dumps(
+                        {"type": "status", "message": f"trying codex bin: {codex_bin}", "bin": codex_bin},
+                        ensure_ascii=False,
+                    ) + "\n"
+                    try:
+                        proc = subprocess.Popen(
+                            [codex_bin, "exec", "--sandbox", "workspace-write", "--full-auto", codex_prompt],
+                            cwd=str(project_root),
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                            encoding="utf-8",
+                            errors="replace",
+                            bufsize=1,
+                        )
+                        output_lines: list[str] = []
+                        if proc.stdout is not None:
+                            for raw_line in proc.stdout:
+                                line = raw_line.rstrip()
+                                if not line:
+                                    continue
+                                output_lines.append(line)
+                                yield json.dumps({"type": "log", "message": line}, ensure_ascii=False) + "\n"
+                        rc = int(proc.wait())
+                        codex_result = {
+                            "ok": rc == 0,
+                            "code": rc,
+                            "stdout": "\n".join(output_lines).strip(),
+                            "stderr": "",
+                        }
+                        break
+                    except OSError as exc:
+                        last_os_error = str(exc)
+                        yield json.dumps({"type": "status", "message": f"bin failed: {exc}"}, ensure_ascii=False) + "\n"
+                        continue
+                if codex_result["code"] == -1 and not codex_result["stderr"]:
+                    codex_result["stderr"] = (
+                        f"{last_os_error or '[WinError 2] system cannot find codex executable'}; "
+                        f"tried={codex_bin_candidates}"
+                    )
+                final_payload = _build_response_payload(codex_result, fail_on_empty=False)
+                yield json.dumps({"type": "final", "payload": final_payload}, ensure_ascii=False) + "\n"
+
+            return StreamingResponse(_iter_events(), media_type="application/x-ndjson")
+
+        last_os_error: str = ""
+        codex_result = {"ok": False, "code": -1, "stdout": "", "stderr": ""}
+        for codex_bin in codex_bin_candidates:
+            try:
+                codex = subprocess.run(
+                    [codex_bin, "exec", "--sandbox", "workspace-write", "--full-auto", codex_prompt],
+                    cwd=str(project_root),
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    check=False,
+                    timeout=180,
+                )
+                codex_result = {
+                    "ok": codex.returncode == 0,
+                    "code": codex.returncode,
+                    "stdout": (codex.stdout or "").strip(),
+                    "stderr": (codex.stderr or "").strip(),
+                }
+                break
+            except subprocess.TimeoutExpired as exc:
+                codex_result = {
+                    "ok": False,
+                    "code": -2,
+                    "stdout": (exc.stdout or "").strip() if isinstance(exc.stdout, str) else "",
+                    "stderr": f"codex exec timed out after 180 seconds (bin={codex_bin})",
+                }
+                break
+            except OSError as exc:
+                last_os_error = str(exc)
+                continue
+        if codex_result["code"] == -1 and not codex_result["stderr"]:
+            codex_result["stderr"] = (
+                f"{last_os_error or '[WinError 2] system cannot find codex executable'}; "
+                f"tried={codex_bin_candidates}"
             )
-            raise HTTPException(status_code=500, detail=detail)
-        created = [
-            _trader_to_response(_load_trader_or_404(project_root, season_slug, slug))
-            for slug in created_slugs
-        ]
-        return {"traders": created, "codex": codex_payload}
+        return _build_response_payload(codex_result, fail_on_empty=True)
 
     @app.get("/api/seasons/{season_slug}/traders/{trader_slug}")
     def get_trader(season_slug: str, trader_slug: str) -> dict[str, Any]:
@@ -532,7 +646,12 @@ def create_app(project_root: Path | str | None = None) -> FastAPI:
             shutil.move(str(old_dir), str(new_dir))
 
         _write_trader(project_root=project_root, season_slug=season_slug, trader=updated)
-        _ensure_strategy_template(_strategy_py_path(project_root, season_slug, new_slug))
+        strategy_path = _strategy_path_from_program_entry(
+            project_root=project_root,
+            program_entry=updated.program_entry,
+            fallback=_strategy_py_path(project_root, season_slug, new_slug),
+        )
+        _ensure_strategy_template(strategy_path)
 
         season.add_trader(
             SeasonTraderRef(

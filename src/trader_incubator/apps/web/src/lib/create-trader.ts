@@ -5,20 +5,33 @@ const CODEX_BIN = (import.meta.env.VITE_CODEX_BIN as string | undefined)?.trim()
 
 export type CodexResult = {
   ok: boolean
+  code?: number
   stdout: string
   stderr: string
 }
 
 export type CreateTraderResult = {
-  traders: unknown[]
+  traders?: unknown[]
+  trader?: unknown
   codex: CodexResult
+  error?: string
 }
 
-export async function autoCreateTraderWithCodex(seasonSlug: string): Promise<CreateTraderResult> {
+export type CreateTraderStreamEvent = {
+  type: 'status' | 'log' | 'final'
+  message?: string
+  payload?: CreateTraderResult
+}
+
+export async function autoCreateTraderWithCodex(
+  seasonSlug: string,
+  onEvent?: (event: CreateTraderStreamEvent) => void,
+): Promise<CreateTraderResult> {
+  const useStream = typeof onEvent === 'function'
   const response = await fetch(`${API_BASE}/api/seasons/${encodeURIComponent(seasonSlug)}/traders/codex`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ codex_bin: CODEX_BIN }),
+    body: JSON.stringify({ codex_bin: CODEX_BIN, stream: useStream }),
   })
 
   if (!response.ok) {
@@ -32,5 +45,41 @@ export async function autoCreateTraderWithCodex(seasonSlug: string): Promise<Cre
     throw new Error(`Create trader failed (${response.status}): ${JSON.stringify(detail)}`)
   }
 
-  return response.json() as Promise<CreateTraderResult>
+  if (!useStream || !response.body) {
+    return response.json() as Promise<CreateTraderResult>
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let finalPayload: CreateTraderResult | null = null
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const raw of lines) {
+      const line = raw.trim()
+      if (!line) continue
+      try {
+        const event = JSON.parse(line) as CreateTraderStreamEvent
+        onEvent(event)
+        if (event.type === 'final' && event.payload) {
+          finalPayload = event.payload
+        }
+      } catch {
+        onEvent({ type: 'log', message: line })
+      }
+    }
+  }
+
+  if (!finalPayload) {
+    throw new Error('Create trader failed: missing final stream payload')
+  }
+  if (finalPayload.error) {
+    throw new Error(`Create trader failed (500): ${JSON.stringify(finalPayload.error)}`)
+  }
+  return finalPayload
 }

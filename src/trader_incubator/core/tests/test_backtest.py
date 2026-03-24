@@ -303,3 +303,75 @@ class TraderProgram(TradingStrategy):
     assert strategy_cls.initial_capitals == [12345.0]
 
 
+def test_run_season_backtest_imports_strategy_from_hyphen_folder_fallback(tmp_path: Path) -> None:
+    season_slug = f"hyf{uuid.uuid4().hex[:6]}"
+    trader_slug = "tmp-bot"
+    module_name = f"trader_incubator.core.skills.seasons.{season_slug}.traders.tmp_bot.strategy"
+    program_entry = f"{module_name}:TraderProgram"
+
+    season_dir = tmp_path / "src" / "trader_incubator" / "core" / "skills" / "seasons" / season_slug
+    trader_dir = season_dir / "traders" / trader_slug
+    trader_dir.mkdir(parents=True, exist_ok=True)
+
+    season_payload = {
+        "season": season_slug,
+        "market": "HK",
+        "start_date": "2026-03-20",
+        "end_date": "2026-03-20",
+        "initial_capital": 1000000.0,
+        "symbol_pool": ["01810"],
+        "traders": [
+            {
+                "trader": "Tmp Bot",
+                "style": "test",
+                "program_entry": program_entry,
+            }
+        ],
+        "created_at": "2026-03-20T00:00:00Z",
+    }
+    (season_dir / "season.json").write_text(json.dumps(season_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    trader_payload = {
+        "trader": "Tmp Bot",
+        "season": season_slug,
+        "style": "test",
+        "program_entry": program_entry,
+        "symbols": ["01810"],
+        "created_at": "2026-03-20T00:00:00Z",
+    }
+    (trader_dir / "trader.json").write_text(json.dumps(trader_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    strategy_code = """
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Mapping
+
+import pandas as pd
+
+from exchange import TradingStrategy
+
+
+class TraderProgram(TradingStrategy):
+    def on_minute(self, event_time: datetime, latest_bars: Mapping[str, pd.Series]) -> None:
+        pass
+"""
+    (trader_dir / "strategy.py").write_text(strategy_code.strip() + "\n", encoding="utf-8")
+
+    _write_parquet(
+        tmp_path,
+        period="1m",
+        timestamps=["2026-03-20 09:30:00+08:00"],
+        closes=[10.0],
+    )
+
+    result = run_season_backtest(
+        start_date="2026-03-20T09:30:00+08:00",
+        end_date="2026-03-20T09:30:00+08:00",
+        season_slug=season_slug,
+        project_root=tmp_path,
+        timezone="Asia/Shanghai",
+    )
+    assert result.triggered_minutes == 1
+
+

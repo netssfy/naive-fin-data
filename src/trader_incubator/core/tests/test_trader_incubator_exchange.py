@@ -8,7 +8,7 @@ import uuid
 
 import pandas as pd
 
-from exchange import Exchange, TradingSessionConfig, TradingStrategy
+from exchange import Exchange, MarketCloseEventDetector, TradingSessionConfig, TradingStrategy
 
 
 class FakeClock:
@@ -148,4 +148,19 @@ def test_exchange_strategy_helpers_history_and_market_order() -> None:
         assert strategy.trade_history_snapshot[0].symbol_key == "stock:cn:000001"
     finally:
         _cleanup_test_root(root)
+
+
+def test_market_close_event_detector_fires_once_after_final_close() -> None:
+    tz = ZoneInfo("Asia/Shanghai")
+    detector = MarketCloseEventDetector("cn")
+    assert detector.observe(datetime(2026, 3, 19, 9, 31, tzinfo=tz)) is None
+    assert detector.observe(datetime(2026, 3, 19, 11, 31, tzinfo=tz)) is None
+    assert detector.observe(datetime(2026, 3, 19, 13, 1, tzinfo=tz)) is None
+
+    event = detector.observe(datetime(2026, 3, 19, 15, 1, tzinfo=tz))
+    assert event is not None
+    assert event.market == "cn"
+    assert event.trading_day.isoformat() == "2026-03-19"
+
+    assert detector.observe(datetime(2026, 3, 19, 15, 2, tzinfo=tz)) is None
 

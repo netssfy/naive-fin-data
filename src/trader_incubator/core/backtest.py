@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 import importlib
 import importlib.util
+import logging
 from pathlib import Path
 import sys
 from typing import Mapping, Sequence
@@ -26,6 +27,7 @@ from trader import Trader
 
 
 SUPPORTED_PERIODS: tuple[str, ...] = ("1m", "5m", "15m", "30m", "60m", "1d")
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -363,15 +365,24 @@ def load_season_strategies(season_slug: str, project_root: Path | str = ".") -> 
         )
         if not symbols:
             continue
-        strategy = _instantiate_strategy(
-            program_entry=ref.program_entry,
-            strategy_name=ref.trader,
-            symbols=symbols,
-            market=market,
-            initial_capital=initial_capital,
-            project_root=Path(project_root),
-        )
-        strategies.append(strategy)
+        try:
+            strategy = _instantiate_strategy(
+                program_entry=ref.program_entry,
+                strategy_name=ref.trader,
+                symbols=symbols,
+                market=market,
+                initial_capital=initial_capital,
+                project_root=Path(project_root),
+            )
+            strategies.append(strategy)
+        except Exception as exc:
+            logger.warning(
+                "[backtest] skip invalid trader strategy season=%s trader=%s program_entry=%s error=%s",
+                season_slug,
+                ref.trader,
+                ref.program_entry,
+                exc,
+            )
     return strategies
 
 
@@ -434,7 +445,21 @@ def _import_program_module(module_name: str, project_root: Path):
         module_path = project_root / "src" / Path(*candidate.split("."))
         module_file = module_path.with_suffix(".py")
         if not module_file.exists():
-            continue
+            # Compatibility fallback:
+            # old server flow could place trader folder as slug-with-hyphen while
+            # program_entry used module_name_with_underscore.
+            parts = candidate.split(".")
+            if len(parts) >= 3 and parts[-3] == "traders":
+                alt_parts = list(parts)
+                alt_parts[-2] = alt_parts[-2].replace("_", "-")
+                alt_module_file = (project_root / "src" / Path(*alt_parts)).with_suffix(".py")
+                if alt_module_file.exists():
+                    module_file = alt_module_file
+                    candidate = ".".join(alt_parts)
+                else:
+                    continue
+            else:
+                continue
         spec = importlib.util.spec_from_file_location(candidate, module_file)
         if spec is None or spec.loader is None:
             continue

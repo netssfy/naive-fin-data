@@ -14,6 +14,9 @@ import yfinance as yf
 
 from backtest import load_season_strategies
 from exchange import (
+    MARKET_SESSIONS,
+    MARKET_TIMEZONE,
+    MarketCloseEventDetector,
     Order,
     RealClock,
     SimulatedMatchingEngine,
@@ -21,9 +24,11 @@ from exchange import (
     TradingStrategy,
     _ensure_timezone,
     _floor_to_minute,
+    normalize_market,
 )
 from persistence import persist_backtest_results
 from season import Season
+from trader_research import default_codex_bin, run_season_trader_research
 
 logger = logging.getLogger(__name__)
 logging.getLogger("yfinance").setLevel(logging.CRITICAL)
@@ -47,6 +52,20 @@ _AK_MINUTE_PERIOD_MAP = {
     "30m": "30",
     "60m": "60",
 }
+
+
+def _is_market_open(market: str, now: datetime) -> bool:
+    normalized = normalize_market(market)
+    sessions = MARKET_SESSIONS.get(normalized)
+    if not sessions:
+        # Unknown market: keep old behavior and do not block live ticks.
+        return True
+    tz_name = MARKET_TIMEZONE.get(normalized, "Asia/Shanghai")
+    local_now = _ensure_timezone(now, ZoneInfo(tz_name))
+    if local_now.weekday() >= 5:
+        return False
+    current = local_now.time()
+    return any(start_at <= current < end_at for start_at, end_at in sessions)
 
 
 def _to_yf_symbol(symbol: SymbolRef) -> str:
@@ -465,12 +484,14 @@ class LiveExchange:
     def __init__(
         self,
         strategies: Sequence[TradingStrategy],
+        market: str = "cn",
         timezone: str = "Asia/Shanghai",
         clock: RealClock | None = None,
         data_store: LiveMarketDataStore | None = None,
         debug: bool = False,
     ) -> None:
         self.strategies = list(strategies)
+        self.market = normalize_market(market)
         self.tz = ZoneInfo(timezone)
         self.clock = clock or RealClock(self.tz)
         self.data_store = data_store or LiveMarketDataStore(timezone=timezone)
@@ -492,6 +513,10 @@ class LiveExchange:
 
     def run_tick(self, tick_time: datetime) -> None:
         normalized_tick = _floor_to_minute(_ensure_timezone(tick_time, self.tz))
+        if not _is_market_open(self.market, normalized_tick):
+            if self.debug:
+                logger.debug("[live] skip tick outside session market=%s tick=%s", self.market, normalized_tick.isoformat())
+            return
         if not self._subscribed_symbols:
             self._subscribed_symbols = self._collect_subscribed_symbols()
 
@@ -610,10 +635,11 @@ def run_season_live(
     end_time: str | datetime | None = None,
     debug: bool = False,
 ) -> tuple[int, list[Order]]:
+    season = Season.load(season_slug=season_slug, project_root=project_root)
     strategies = load_season_strategies(season_slug=season_slug, project_root=project_root)
     if debug:
         print(f"[LIVE] season={season_slug} strategies={len(strategies)}")
-    exchange = LiveExchange(strategies=strategies, timezone=timezone, debug=debug)
+    exchange = LiveExchange(strategies=strategies, market=str(season.market), timezone=timezone, debug=debug)
     end_ts: datetime | None = None
     if end_time is not None:
         if isinstance(end_time, datetime):
@@ -678,6 +704,9 @@ def run_all_seasons_live(
     max_minutes: int | None = None,
     end_time: str | datetime | None = None,
     debug: bool = False,
+    research_on_close: bool = True,
+    codex_bin: str = "",
+    research_dry_run: bool = False,
 ) -> tuple[int, list[str], list[Order]]:
     season_slugs = list_valid_season_slugs(project_root=project_root, timezone=timezone)
     if not season_slugs:
@@ -689,15 +718,25 @@ def run_all_seasons_live(
     shared_feed = MultiSourceDataFeed(timezone=timezone)
     shared_store = LiveMarketDataStore(timezone=timezone, data_feed=shared_feed)
     exchanges: dict[str, LiveExchange] = {}
+    season_markets: dict[str, str] = {}
     for season_slug in season_slugs:
         season_strategies = load_season_strategies(season_slug=season_slug, project_root=project_root)
+        season = Season.load(season_slug=season_slug, project_root=project_root)
+        season_markets[season_slug] = str(season.market)
         exchanges[season_slug] = LiveExchange(
             strategies=season_strategies,
+            market=season_markets[season_slug],
             timezone=timezone,
             clock=shared_clock,
             data_store=shared_store,
             debug=debug,
         )
+    close_detectors = {
+        season_slug: MarketCloseEventDetector(market=market)
+        for season_slug, market in season_markets.items()
+    }
+    last_research_day_by_season: dict[str, date | None] = {season_slug: None for season_slug in season_slugs}
+    resolved_codex_bin = str(codex_bin).strip() or default_codex_bin(Path(project_root))
 
     total_traders = sum(len(ex.strategies) for ex in exchanges.values())
     logger.info(
@@ -740,8 +779,38 @@ def run_all_seasons_live(
         if end_ts is not None and tick_time > _floor_to_minute(_ensure_timezone(end_ts, tz)):
             break
 
-        for exchange in exchanges.values():
+        for season_slug, exchange in exchanges.items():
             exchange.run_tick(tick_time)
+            if not research_on_close:
+                continue
+            detector = close_detectors.get(season_slug)
+            if detector is None:
+                continue
+            close_event = detector.observe(tick_time)
+            if close_event is None:
+                continue
+            if last_research_day_by_season.get(season_slug) == close_event.trading_day:
+                logger.debug(
+                    "[live] duplicated market close event ignored  season=%s day=%s",
+                    season_slug,
+                    close_event.trading_day.isoformat(),
+                )
+                continue
+            logger.info(
+                "[live] market close event  season=%s market=%s day=%s at=%s",
+                season_slug,
+                close_event.market,
+                close_event.trading_day.isoformat(),
+                close_event.triggered_at.isoformat(),
+            )
+            executed = run_season_trader_research(
+                season_slug=season_slug,
+                project_root=Path(project_root),
+                codex_bin=resolved_codex_bin,
+                dry_run=research_dry_run,
+            )
+            last_research_day_by_season[season_slug] = close_event.trading_day
+            logger.info("[live] market close research done  season=%s traders=%d", season_slug, executed)
 
         total_bars = sum(len(ex._current_bars) for ex in exchanges.values())
         if total_bars == 0:
@@ -826,6 +895,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-minutes", type=int, default=None, help="stop after N minutes")
     parser.add_argument("--end-time", default=None, help="optional stop time, ISO-8601")
     parser.add_argument("--debug", action="store_true", help="print per-minute logs")
+    parser.add_argument("--disable-research-on-close", action="store_true", help="disable auto trader research at market close")
+    parser.add_argument("--codex-bin", default="", help="codex executable path (default: auto-detect)")
+    parser.add_argument("--research-dry-run", action="store_true", help="print market-close research command without execution")
     return parser
 
 
@@ -838,6 +910,9 @@ def main() -> int:
             max_minutes=args.max_minutes,
             end_time=args.end_time,
             debug=args.debug,
+            research_on_close=not bool(args.disable_research_on_close),
+            codex_bin=args.codex_bin,
+            research_dry_run=bool(args.research_dry_run),
         )
         print(f"seasons={seasons}")
         print(f"minutes={minutes}")
