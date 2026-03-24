@@ -1,4 +1,7 @@
-﻿const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || 'http://127.0.0.1:8000'
+type DesktopBridge = { apiBaseUrl?: string }
+const desktopApiBase = (globalThis as { desktop?: DesktopBridge }).desktop?.apiBaseUrl?.trim()
+const envApiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim()
+const API_BASE = desktopApiBase || envApiBase || 'http://127.0.0.1:8000'
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {

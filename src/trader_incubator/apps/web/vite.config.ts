@@ -7,6 +7,7 @@ const seasonsRoot = path.resolve(__dirname, '../../core/skills/seasons')
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

@@ -1,0 +1,47 @@
+{
+  "name": "trader-incubator-desktop",
+  "version": "0.1.0",
+  "description": "Electron desktop shell for Trader Incubator",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev:web --prefix ../web",
+    "dev:electron": "cross-env ELECTRON_RENDERER_URL=http://127.0.0.1:5173 electron .",
+    "dev:all": "concurrently -k \"npm run dev\" \"wait-on http://127.0.0.1:5173 && npm run dev:electron\"",
+    "build:web": "npm run build --prefix ../web",
+    "start": "electron .",
+    "dist": "npm run build:web && electron-builder --win --dir"
+  },
+  "build": {
+    "appId": "com.naivefin.traderincubator",
+    "productName": "Trader Incubator",
+    "electronDist": "node_modules/electron/dist",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web-dist"
+      },
+      {
+        "from": "../../core",
+        "to": "core"
+      }
+    ],
+    "win": {
+      "signAndEditExecutable": false
+    }
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^37.4.0",
+    "electron-builder": "^26.0.12",
+    "wait-on": "^9.0.1"
+  }
+}
