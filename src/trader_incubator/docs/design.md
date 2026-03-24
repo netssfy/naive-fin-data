@@ -1,209 +1,155 @@
 ﻿# Trader Incubator 设计文档（当前实现）
 
 ## 1. 目标与范围
-本文档描述 `src/trader_incubator` 当前代码实现的设计与职责划分，覆盖：
-- 回测引擎（`backtest.py`）
-- 实盘引擎（`live.py`）
-- 交易执行与基础抽象（`exchange.py`）
-- 赛季/交易员模型（`season.py`、`trader.py`）
-- 包导出层（`__init__.py`）
-- 当前示例策略与辅助脚本（`core/skills/seasons/...`、`core/skills/帅帅/scripts/...`）
+本文档描述 `src/trader_incubator` 当前已落地实现，覆盖以下模块：
+- 核心交易引擎与数据层：`core/exchange.py`、`core/backtest.py`、`core/live.py`
+- 赛季/交易员模型与结果持久化：`core/season.py`、`core/trader.py`、`core/persistence.py`
+- 管理与编排 API：`core/server.py`
+- 非交易时段研究触发：`core/trader_research.py`
+- 前端与桌面壳：`apps/web`、`apps/desktop`
 
-不包含前端与可视化实现（当前目录无相关源码）。
+不包含尚未实现的长期规划能力（见 `docs/epic.md`）。
 
-## 2. 系统总览
-系统围绕“策略按分钟触发”的统一运行模型实现，核心分为两条运行路径：
-- 回测路径：从本地 parquet 历史数据读取，按分钟推进时间。
-- 实盘路径：从 AkShare / yfinance 拉取当日分钟数据，按真实时钟推进。
+## 2. 架构总览
+当前系统是一个三层架构：
 
-统一抽象：
-- `TradingStrategy`：策略基类，定义策略生命周期与下单/查仓接口。
-- `SimulatedMatchingEngine`：模拟撮合和资金/持仓记账。
-- `Order`：订单与成交结果的统一结构。
+1. 核心层（Python）
+- 统一策略接口 `TradingStrategy`
+- 回测运行时 `BacktestExchange`
+- 实时运行时 `LiveExchange`
+- 模拟撮合 `SimulatedMatchingEngine`
 
-## 3. 目录与组件
+2. 服务层（FastAPI）
+- Season/Trader 的 CRUD
+- 读取 `orders.json` / `equity.json`
+- 调用 Codex 自动创建交易员策略
+- 应用启动时后台拉起 `run_all_seasons_live`
 
-### 3.1 核心模块
-- `exchange.py`：交易基础设施（符号、时钟、会话、撮合、策略基类、实时交易所框架）
-- `backtest.py`：回测数据存储、回测交易所、赛季策略加载、CLI
-- `live.py`：多源实时数据拉取、实盘缓存存储、实盘交易所、CLI
-- `season.py`：赛季数据模型与 JSON 文件持久化
-- `trader.py`：交易员数据模型与 JSON 文件持久化
-- `__init__.py`：包级 API 导出与 `LiveExchange` 惰性导入
+3. 展示层（Web + Electron）
+- React 页面消费 FastAPI
+- Electron 打包时内置 Web 资源并拉起 Python API
 
-### 3.2 赛季资产与脚本
-- `core/skills/seasons/<season>/season.json`：赛季配置
-- `core/skills/seasons/<season>/traders/<trader>/trader.json`：交易员配置
-- `core/skills/seasons/<season>/traders/<trader>/strategy.py`：策略代码入口
-- `core/skills/帅帅/scripts/create_trader_skills.py`：创建交易员目录、策略模板并回写赛季 roster
+## 3. 目录与职责
 
-## 4. 运行时流程
+### 3.1 core 模块
+- `exchange.py`
+  - `SymbolRef`：统一 symbol key（`type:market:code`）
+  - `TradingStrategy`：策略生命周期与交易 API
+  - `SimulatedMatchingEngine`：市价单撮合、持仓、现金、手续费
+  - `HistoricalDataStore`：本地 parquet 历史数据读取（单周期）
+  - `Exchange`：基于交易时段的实时调度框架
+  - `MarketCloseEventDetector`：按市场/交易日触发一次收盘事件
+
+- `backtest.py`
+  - `MultiPeriodHistoricalDataStore`：多周期历史数据缓存与读取（1m/5m/15m/30m/60m/1d）
+  - `BacktestExchange`：分钟推进、禁止未来函数（history 截断到当前回测时刻）
+  - `run_season_backtest`：赛季回测入口，支持结果落盘
+  - `load_season_strategies`：按 season/trader 配置动态加载策略类
+
+- `live.py`
+  - `MultiSourceDataFeed`：实时多源拉取（AkShare -> Baostock -> yfinance）
+  - `LiveMarketDataStore`：多周期行情缓存；按 symbol+period+minute 控制刷新
+  - `LiveExchange`：实盘分钟级驱动（当前下单仍为模拟撮合）
+  - `run_season_live`：单赛季 live 入口
+  - `run_all_seasons_live`：多赛季并行运行（共享时钟与数据源）
+  - 收盘后可触发 `run_season_trader_research`
+
+- `persistence.py`
+  - `save_orders`：按 trader 追加/去重写入 `orders.json`
+  - `compute_daily_equity` + `save_equity`：写入每日权益快照 `equity.json`
+  - `persist_backtest_results`：批量持久化订单和权益
+
+- `season.py` / `trader.py`
+  - 定义 Season/Trader 数据模型
+  - 提供 slug/module 名规范化
+  - 负责 JSON 文件读写
+
+- `server.py`
+  - FastAPI 应用与 REST 路由
+  - 支持 `POST /api/seasons/{season_slug}/traders/codex`
+    - 手动模式：先建 trader，再让 codex 改进策略文件
+    - 自动模式：让 codex 基于脚本自动创建 trader
+  - 提供 NDJSON 流式日志返回（`stream=true`）
+
+- `trader_research.py`
+  - 发现 season 下所有 trader
+  - 生成复盘 prompt
+  - 调用 `codex exec` 执行非交易时段策略改进
+
+### 3.2 技能与配置目录
+- 赛季配置：`src/trader_incubator/core/skills/seasons/<season>/season.json`
+- 交易员配置：`.../traders/<trader>/trader.json`
+- 策略代码：`.../traders/<trader>/strategy.py`
+- 交易结果：`.../traders/<trader>/orders.json`、`equity.json`
+
+### 3.3 前端与桌面壳
+- `apps/web`
+  - React + TypeScript + Vite + React Router + Zustand + Tailwind
+  - 通过 API 拉取季赛、交易员、权益、订单
+  - 支持调用后端 codex 创建交易员（含流式日志）
+
+- `apps/desktop`
+  - Electron 壳，主进程 `main.js`
+  - 开发/打包均可自动启动 Python `core/server.py`
+  - 打包后加载 `web-dist` 并内置 core 资源
+
+## 4. 核心运行流程
 
 ### 4.1 回测流程（`run_season_backtest`）
-1. 解析时间窗口（支持 `str/date/datetime`）。
-2. 加载赛季与交易员配置，生成策略实例（`load_season_strategies`）。
-3. 初始化 `MultiPeriodHistoricalDataStore`（多周期历史数据）。
-4. 初始化 `BacktestExchange` 并绑定策略。
-5. 从 `start_at` 到 `end_at` 逐分钟循环：
-- 取各 symbol 最新 1m bar。
-- 调用各策略 `on_minute`。
-- 策略内部可调用 `place_market_order`，进入模拟撮合。
-6. 返回 `BacktestResult`（触发分钟数、订单列表）。
+1. 解析时间窗口并加载 season/trader。
+2. 构建策略实例（兼容多种构造函数签名）。
+3. 预热多周期历史数据。
+4. 从 `start_at` 到 `end_at` 按分钟推进：
+- 拉取各 symbol 对应分钟最新 bar。
+- 调用策略 `on_minute`。
+- 策略调用 `place_market_order` 进入模拟撮合。
+5. 记录每日收盘价并持久化订单/权益。
 
 ### 4.2 实盘流程（`run_season_live`）
-1. 加载赛季策略。
-2. 初始化 `LiveExchange` 与 `LiveMarketDataStore`。
-3. 预热数据缓存。
-4. 每分钟 tick：
-- 拉取/刷新最新分钟数据（AkShare 优先，失败 fallback yfinance）。
-- 调用策略 `on_minute`。
-- 订单走 `SimulatedMatchingEngine`（当前仍是模拟撮合，不对接真实券商）。
-5. 达到 `max_minutes` 或 `end_time` 后结束，返回分钟数与订单列表。
+1. 加载策略并初始化 `LiveExchange`。
+2. 每分钟 tick 时按市场交易时段决定是否执行。
+3. 多源获取实时数据并更新缓存。
+4. 执行 `on_minute`，下单进入模拟撮合。
+5. 结束后将结果持久化为 `orders.json`/`equity.json`。
 
-### 4.3 多赛季实盘流程（`run_all_seasons_live`）
-1. 扫描 `core/skills/seasons/*/season.json` 并筛选“有效 season”：
-- `start_date <= today`
-- `end_date` 为空或 `end_date >= today`
-2. 每个 season 创建一个独立 `LiveExchange`（独立撮合引擎、独立持仓与订单账本）。
-3. 所有 season 的 exchange 共享同一个 `MultiSourceDataFeed`（带缓存）。
-4. 每个 exchange 使用自己的 `LiveMarketDataStore`，但通过共享 feed 复用网络请求结果。
-5. 外层调度器按分钟统一驱动各 exchange 的 `run_tick`，保证节奏一致同时保持交易隔离。
+### 4.3 多赛季实盘（`run_all_seasons_live`）
+1. 自动筛选当前有效 season（基于 `start_date/end_date`）。
+2. 为每个 season 创建独立 `LiveExchange`（订单与持仓隔离）。
+3. 共享一个 `RealClock` + `MultiSourceDataFeed` + `LiveMarketDataStore` 降低拉取开销。
+4. 每分钟统一驱动所有 season tick。
+5. 通过 `MarketCloseEventDetector` 在收盘时触发一次 trader research。
 
-## 5. 类与职责
+## 5. 数据与文件约定
+- 历史行情：`data/<type>/<market>/<code>/<period>/*.parquet`
+- season 文件：`src/trader_incubator/core/skills/seasons/<season>/season.json`
+- trader 文件：`.../traders/<trader>/trader.json`
+- 策略入口：`program_entry = module.path:ClassName`
 
-### 5.1 `exchange.py`
-- `SymbolRef`
-  - 职责：统一 symbol 表示（`type:market:code`），提供解析与 key 规范。
-- `TradingSessionConfig`
-  - 职责：描述交易时段配置（开收盘、预开盘、时区）。
-- `SessionWindow`
-  - 职责：承载某交易日的 pre-open/open/close 时间窗口。
-- `Order`
-  - 职责：承载订单结果（状态、成交价、原因信息）。
-- `RealClock`
-  - 职责：封装当前时间与 sleep，便于 runtime 控制与测试替换。
-- `HistoricalDataStore`
-  - 职责：读取本地单周期 parquet 数据（默认 1m），提供历史窗口和 latest bar 查询。
-- `SimulatedMatchingEngine`
-  - 职责：执行市价单模拟成交、维护订单列表、持仓和现金账本。
-  - 成交规则：以当前 bar 的 `close` 作为成交价；无行情/无效价格则拒单。
-- `TradingStrategy`
-  - 职责：策略基类与统一接口。
-  - 生命周期钩子：`on_pre_open` / `on_minute` / `on_post_close`。
-  - 交易接口：`history`、`place_market_order`、`get_position(s)`、`get_trade_history`。
-- `Exchange`
-  - 职责：实时运行框架（会话时间控制 + 分钟触发 + 策略调度 + 下单路由）。
+## 6. API 概要（`core/server.py`）
+- `GET /health`
+- `GET/POST /api/seasons`
+- `GET/PUT/DELETE /api/seasons/{season_slug}`
+- `GET/POST /api/seasons/{season_slug}/traders`
+- `POST /api/seasons/{season_slug}/traders/codex`
+- `GET/PUT/DELETE /api/seasons/{season_slug}/traders/{trader_slug}`
+- `GET /api/seasons/{season_slug}/equity`
+- `GET /api/seasons/{season_slug}/orders`
 
-### 5.2 `backtest.py`
-- `BacktestResult`
-  - 职责：封装回测输出摘要。
-- `MultiPeriodHistoricalDataStore`
-  - 职责：加载多周期历史数据（`1m/5m/15m/30m/60m/1d`），提供历史与 latest 查询。
-  - 特点：按 symbol+period 缓存，读取后统一时区与时间过滤。
-- `BacktestExchange`
-  - 职责：回测专用调度器（虚拟时钟推进），接口与 `TradingStrategy` 对齐。
-  - 特点：`get_history` 会把 `end_time` 截断到当前回测时刻，防止未来函数。
-- `load_season_strategies`
-  - 职责：将 season/trader 配置解析为可运行策略对象。
-  - 规则：trader 层 `symbols/initial_capital` 优先，否则回退 season 默认值。
-- `_instantiate_strategy`
-  - 职责：兼容不同策略构造签名，最终确保对象是 `TradingStrategy` 子类。
-- CLI (`main`)
-  - 职责：提供命令行快速回测入口。
+## 7. 测试覆盖（当前）
+`core/tests` 已覆盖主要链路：
+- 回测分钟推进、无未来数据泄露、资金继承逻辑
+- live 在交易时段/非交易时段行为
+- 多赛季收盘研究触发
+- server 的 season/trader CRUD 与 codex 分支流程
 
-### 5.3 `live.py`
-- `MultiSourceDataFeed`
-  - 职责：封装实时数据源优先级（AkShare -> yfinance）。
-  - 特点：带请求级缓存（按 symbol/period/time-window），供多 session 共享。
-- `LiveMarketDataStore`
-  - 职责：维护实盘多周期缓存；提供 latest 1m 和历史切片。
-  - 特点：网络侧只拉取 `1m`，`5m/15m/30m/60m/1d` 由本地重采样构建；同分钟同 symbol+period 只刷新一次。
-- `LiveExchange`
-  - 职责：实盘分钟调度与策略执行（当前订单撮合同样走模拟引擎）；支持注入 `data_store` 与共享 `clock`。
-  - 关键接口：`prepare`（预热）与 `run_tick`（单分钟执行），便于外层多 session 协调调度。
-- `list_valid_season_slugs`
-  - 职责：发现当前有效赛季列表。
-- `run_all_seasons_live`
-  - 职责：以“一个 season 一个 exchange session”的隔离模型执行多赛季 live，并共享行情源降低请求成本。
-- CLI (`main`)
-  - 职责：提供命令行实盘运行入口（单赛季/多赛季）。
+## 8. 关键约束与已知限制
+- “live” 当前仍是模拟成交，不接券商网关。
+- 交易日历仅按周末过滤，未接入法定节假日日历。
+- 撮合逻辑按 bar close 成交，未建模深度撮合。
+- 费用模型为统一费率，未细分佣金/税费/滑点模型。
+- 部分模块使用 `from exchange import ...` 这类导入方式，运行环境需保证 `core` 模块可被直接解析。
 
-### 5.4 `season.py`
-- `SeasonTraderRef`
-  - 职责：赛季 roster 中的轻量交易员引用（名称、风格、程序入口）。
-- `Season`
-  - 职责：赛季聚合根，管理市场、赛期、初始资金、可交易标的池、交易员 roster。
-  - 能力：JSON 序列化、保存/加载、`add_trader` 去重更新（按 slug）。
-- `slugify` / `to_module_name`
-  - 职责：统一文件路径和模块命名约定。
-
-### 5.5 `trader.py`
-- `Trader`
-  - 职责：交易员配置模型，承载策略入口、风格、可交易标的、可选初始资金。
-  - 能力：JSON 序列化、保存/加载、按赛季批量加载 `load_all`。
-
-### 5.6 `__init__.py`
-- 包导出职责：统一暴露常用 API（`TradingStrategy`, `Exchange`, `run_season_backtest` 等）。
-- 惰性导入职责：通过 `__getattr__` 延迟导入 `LiveExchange/run_season_live`，避免不必要依赖加载。
-
-## 6. 数据与文件约定
-- 历史行情目录：`<project>/data/<type>/<market>/<code>/<period>/*.parquet`
-- 赛季配置：`src/trader_incubator/core/skills/seasons/<season_slug>/season.json`
-- 交易员配置：`src/trader_incubator/core/skills/seasons/<season_slug>/traders/<trader_slug>/trader.json`
-- 策略入口：`program_entry` 采用 `module.path:ClassName`
-
-## 7. 关键设计决策（当前实现）
-- 回测与实盘共享策略接口和撮合引擎，降低策略迁移成本。
-- 数据层按 symbol 缓存并惰性加载，减少重复 IO。
-- 策略加载支持“宽松构造签名”，提高历史策略兼容性。
-- 实盘数据采用多源兜底，优先国内数据接口，失败时退化到 yfinance。
-
-## 8. 已知限制与 Review 关注点
-- 当前“实盘”仍为模拟下单，不含真实券商网关。
-- 会话日历仅处理周末，不含法定节假日与夜盘。
-- 模拟撮合使用 bar close 成交，未建模滑点、手续费、撮合深度。
-- 风控能力较基础：下单合法性检查有限，未做统一风险限额。
-- `HistoricalDataStore` 仅支持初始化周期（默认 1m）；多周期能力主要在回测与实盘数据存储中。
-- 文档 `epic.md` 体现了远期目标，和当前落地实现之间仍有功能差距（例如非交易时段策略演化流程仍未在核心引擎实现）。
-
-## 9. 示例策略现状
-`core/skills/seasons/s1/traders/trader0/strategy.py` 中的 `TraderProgram` 是测试策略：
-- 每 5 分钟随机挑选一个可用 symbol
-- 随机买卖与手数
-- 卖出时会检查持仓，避免负持仓
-
-它主要用于验证引擎调度与下单链路，不代表生产级策略实现。
-
-## 10. CLI 启动示例
-- 单赛季 live：
-```bash
-python -m trader_incubator.live --season s1 --max-minutes 5
-```
-- 多赛季 live（标准参数）：
-```bash
-python -m trader_incubator.live --all-seasons --max-minutes 5
-```
-- 多赛季 live（兼容别名，按当前实现支持）：
-```bash
-python -m trader_incubator.live --all-seaons --max-minutes 5
-```
-
-## 11. 主控循环（Orchestrator）
-- 文件：`trader_incubator/orchestrator.py`
-- 目标：在一个长期运行进程中自动切换两种模式：
-  - 交易时段：拉起并守护 `live --all-seasons`
-  - 非交易时段：按交易员触发 `codex cli` 复盘和策略改进
-- 关键设计：
-  - 每天只触发一次非交易时段研究任务（状态文件去重）
-  - 子进程方式管理 live，切到非交易时段会安全停止 live 进程
-  - 主控进程自动注入 `PYTHONPATH=src` 供子进程导入项目模块
-
-示例：
-```bash
-python -m trader_incubator.orchestrator --poll-seconds 30
-```
-
-仅演练一次循环（不真的执行子进程）：
-```bash
-python -m trader_incubator.orchestrator --once --dry-run
-```
+## 9. 与旧文档差异（本次修正）
+- 核心路径统一为 `src/trader_incubator/core/*`（非旧版根目录扁平结构）。
+- 当前已存在前端与桌面壳，不再是“仅核心引擎”。
+- 当前仓库无 `orchestrator.py`，改为 `server.py + run_all_seasons_live` 组合运行。
