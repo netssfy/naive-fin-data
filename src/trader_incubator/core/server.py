@@ -1,17 +1,28 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 import shutil
 import subprocess
+import traceback
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+logger = logging.getLogger(__name__)
+
+from live import run_all_seasons_live
 from season import Season, SeasonTraderRef, slugify, to_module_name
 from trader import Trader
+
+_live_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="live-runner")
 
 
 def _utc_now() -> str:
@@ -171,7 +182,26 @@ def create_app(project_root: Path | str | None = None) -> FastAPI:
     resolved_root = Path(project_root) if project_root is not None else _default_project_root()
     resolved_root = resolved_root.resolve()
 
-    app = FastAPI(title="Trader Incubator API", version="0.1.0")
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        loop = asyncio.get_running_loop()
+
+        def _run_live() -> None:
+            try:
+                logger.info("[live] starting run_all_seasons_live, project_root=%s", resolved_root)
+                run_all_seasons_live(project_root=resolved_root)
+                logger.info("[live] run_all_seasons_live exited normally")
+            except Exception:
+                logger.exception("[live] run_all_seasons_live crashed")
+
+        future = loop.run_in_executor(_live_executor, _run_live)
+        try:
+            yield
+        finally:
+            _live_executor.shutdown(wait=False, cancel_futures=True)
+            future.cancel()
+
+    app = FastAPI(title="Trader Incubator API", version="0.1.0", lifespan=lifespan)
     app.state.project_root = resolved_root
 
     app.add_middleware(
@@ -181,6 +211,18 @@ def create_app(project_root: Path | str | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        if isinstance(exc, HTTPException):
+            raise exc
+        logger.error(
+            "Unhandled exception on %s %s\n%s",
+            request.method,
+            request.url,
+            traceback.format_exc(),
+        )
+        return JSONResponse(status_code=500, content={"detail": str(exc)})
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -440,6 +482,13 @@ def create_app(project_root: Path | str | None = None) -> FastAPI:
         created_slugs = sorted(after - before)
         if not created_slugs:
             detail = codex_payload["stderr"] or codex_payload["stdout"] or "codex did not create any trader"
+            logger.error(
+                "codex did not create any trader for season '%s'\nreturncode: %s\nstdout: %s\nstderr: %s",
+                season_slug,
+                codex_payload.get("code"),
+                codex_payload.get("stdout"),
+                codex_payload.get("stderr"),
+            )
             raise HTTPException(status_code=500, detail=detail)
         created = [
             _trader_to_response(_load_trader_or_404(project_root, season_slug, slug))

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import logging
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Sequence
 from zoneinfo import ZoneInfo
 
 import akshare as ak
+import baostock as bs
 import pandas as pd
 import yfinance as yf
 
@@ -23,9 +25,20 @@ from exchange import (
 from persistence import persist_backtest_results
 from season import Season
 
+logger = logging.getLogger(__name__)
+logging.getLogger("yfinance").setLevel(logging.CRITICAL)
+
+# configure once at module level so any entry point picks it up
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)-8s %(name)s  %(message)s",
+    datefmt="%H:%M:%S",
+    force=True,
+)
+
 
 _SUPPORTED_PERIODS = {"1m", "5m", "15m", "30m", "60m", "1d"}
-_LIVE_FETCH_PERIODS = ("1m", "5m", "15m", "30m", "60m")
+_LIVE_FETCH_PERIODS = ("1m", "5m", "15m", "30m", "60m", "1d")
 _LIVE_BAR_COLUMNS = ["timestamp", "open", "high", "low", "close", "adj_close", "volume", "code"]
 _AK_MINUTE_PERIOD_MAP = {
     "1m": "1",
@@ -58,13 +71,17 @@ def _call_akshare_with_candidates(candidates: list[tuple[str, dict[str, object]]
     for fn_name, kwargs in candidates:
         fn = getattr(ak, fn_name, None)
         if fn is None:
+            logger.debug("[live] akshare fn not found: %s", fn_name)
             continue
         try:
             df = fn(**kwargs)
-        except Exception:
+        except Exception as exc:
+            logger.warning("[live] akshare %s failed: %s", fn_name, exc)
             continue
         if isinstance(df, pd.DataFrame) and not df.empty:
+            logger.debug("[live] akshare %s ok rows=%d", fn_name, len(df))
             return df
+        logger.warning("[live] akshare %s returned empty df  kwargs=%s", fn_name, kwargs)
     return pd.DataFrame()
 
 
@@ -172,89 +189,130 @@ def _to_ak_date_time_str(dt: datetime, tz: ZoneInfo) -> str:
 class MultiSourceDataFeed:
     def __init__(self, timezone: str = "Asia/Shanghai") -> None:
         self.tz = ZoneInfo(timezone)
-        self._fetch_cache: dict[tuple[str, str, datetime, datetime], pd.DataFrame] = {}
+        self._empty_warned: set[tuple[str, str]] = set()
 
     def fetch(self, symbol: SymbolRef, period: str, start: datetime, end: datetime) -> pd.DataFrame:
         normalized_period = str(period).strip().lower()
         if normalized_period not in _LIVE_FETCH_PERIODS:
             raise ValueError(f"unsupported live fetch period: {period}")
 
-        start_key = _floor_to_minute(_ensure_timezone(start, self.tz))
-        end_key = _floor_to_minute(_ensure_timezone(end, self.tz))
-        cache_key = (symbol.key, normalized_period, start_key, end_key)
-        cached = self._fetch_cache.get(cache_key)
-        if cached is not None:
-            return cached.copy()
-
         primary = self._fetch_akshare(symbol=symbol, period=normalized_period, start=start, end=end)
         if not primary.empty:
             out = primary
         else:
-            out = self._fetch_yfinance(symbol=symbol, period=normalized_period, start=start, end=end)
-        self._fetch_cache[cache_key] = out.copy()
+            secondary = self._fetch_baostock(symbol=symbol, period=normalized_period, start=start, end=end)
+            if not secondary.empty:
+                out = secondary
+            else:
+                out = self._fetch_yfinance(symbol=symbol, period=normalized_period, start=start, end=end)
+                if out.empty:
+                    warn_key = (symbol.key, normalized_period)
+                    if warn_key not in self._empty_warned:
+                        logger.warning("[live] all sources returned empty  symbol=%s period=%s", symbol.key, normalized_period)
+                        self._empty_warned.add(warn_key)
+                else:
+                    logger.debug("[live] yfinance ok  symbol=%s period=%s rows=%d", symbol.key, normalized_period, len(out))
+        # only cache non-empty results; empty results should be retried next session
+        if not out.empty:
+            self._empty_warned.discard((symbol.key, normalized_period))
         return out
 
     def _fetch_akshare(self, symbol: SymbolRef, period: str, start: datetime, end: datetime) -> pd.DataFrame:
         if symbol.market not in {"cn", "hk"}:
             return pd.DataFrame()
+
+        start_date = start.strftime("%Y%m%d")
+        end_date = end.strftime("%Y%m%d")
+
+        # daily data uses different akshare APIs
+        if period == "1d":
+            if symbol.market == "hk":
+                candidates: list[tuple[str, dict[str, object]]] = [
+                    ("stock_hk_hist", {"symbol": _to_ak_hk_symbol(symbol.code), "period": "daily", "start_date": start_date, "end_date": end_date, "adjust": ""}),
+                ]
+            else:
+                candidates = [
+                    ("stock_zh_a_hist", {"symbol": _to_ak_a_symbol(symbol.code), "period": "daily", "start_date": start_date, "end_date": end_date, "adjust": ""}),
+                ]
+            ak_df = _call_akshare_with_candidates(candidates)
+            return _normalize_akshare_realtime_df(ak_df, symbol.code, self.tz)
+
         ak_period = _AK_MINUTE_PERIOD_MAP.get(period)
         if not ak_period:
             return pd.DataFrame()
 
         start_str = _to_ak_date_time_str(start, self.tz)
         end_str = _to_ak_date_time_str(end, self.tz)
-        candidates: list[tuple[str, dict[str, object]]]
         if symbol.market == "hk":
             candidates = [
-                (
-                    "stock_hk_hist_min_em",
-                    {
-                        "symbol": _to_ak_hk_symbol(symbol.code),
-                        "period": ak_period,
-                        "start_date": start_str,
-                        "end_date": end_str,
-                    },
-                ),
-                (
-                    "stock_hk_hist_min",
-                    {
-                        "symbol": _to_ak_hk_symbol(symbol.code),
-                        "period": ak_period,
-                        "start_date": start_str,
-                        "end_date": end_str,
-                    },
-                ),
+                ("stock_hk_hist_min_em", {"symbol": _to_ak_hk_symbol(symbol.code), "period": ak_period, "start_date": start_str, "end_date": end_str}),
+                ("stock_hk_hist_min", {"symbol": _to_ak_hk_symbol(symbol.code), "period": ak_period, "start_date": start_str, "end_date": end_str}),
             ]
         else:
             candidates = [
-                (
-                    "stock_zh_a_hist_min_em",
-                    {
-                        "symbol": _to_ak_a_symbol(symbol.code),
-                        "period": ak_period,
-                        "start_date": start_str,
-                        "end_date": end_str,
-                    },
-                ),
+                ("stock_zh_a_hist_min_em", {"symbol": _to_ak_a_symbol(symbol.code), "period": ak_period, "start_date": start_str, "end_date": end_str}),
             ]
 
         ak_df = _call_akshare_with_candidates(candidates)
         return _normalize_akshare_realtime_df(ak_df, symbol.code, self.tz)
 
+    def _fetch_baostock(self, symbol: SymbolRef, period: str, start: datetime, end: datetime) -> pd.DataFrame:
+        """Fetch A-share minute data from baostock (cn market only)."""
+        if symbol.market != "cn":
+            return _empty_live_bar_df()
+        # baostock frequency: '1'=1m, '5'=5m, '15'=15m, '30'=30m, '60'=60m
+        bs_freq_map = {"1m": "1", "5m": "5", "15m": "15", "30m": "30", "60m": "60"}
+        freq = bs_freq_map.get(period)
+        if not freq:
+            return _empty_live_bar_df()
+
+        code = symbol.code.zfill(6)
+        bs_code = f"sh.{code}" if code.startswith("6") else f"sz.{code}"
+        start_str = start.strftime("%Y-%m-%d %H:%M:%S")
+        end_str = end.strftime("%Y-%m-%d %H:%M:%S")
+        fields = "date,time,open,high,low,close,volume"
+        try:
+            lg = bs.login()
+            if lg.error_code != "0":
+                logger.warning("[live] baostock login failed: %s", lg.error_msg)
+                return _empty_live_bar_df()
+            rs = bs.query_history_k_data_plus(
+                bs_code, fields,
+                start_date=start_str, end_date=end_str,
+                frequency=freq, adjustflag="3",
+            )
+            rows = []
+            while rs.error_code == "0" and rs.next():
+                rows.append(rs.get_row_data())
+            bs.logout()
+        except Exception as exc:
+            logger.warning("[live] baostock fetch failed symbol=%s: %s", symbol.key, exc)
+            return _empty_live_bar_df()
+
+        if not rows:
+            return _empty_live_bar_df()
+
+        df = pd.DataFrame(rows, columns=fields.split(","))
+        # combine date + time into timestamp
+        df["timestamp"] = pd.to_datetime(df["date"] + " " + df["time"].str[-8:], errors="coerce")
+        df["timestamp"] = _normalize_timestamp_to_tz(df["timestamp"], self.tz)
+        for col in ["open", "high", "low", "close", "volume"]:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+        df["adj_close"] = df["close"]
+        df["code"] = symbol.code
+        df = df[_LIVE_BAR_COLUMNS].dropna(subset=["timestamp"]).reset_index(drop=True)
+        return df.sort_values("timestamp").reset_index(drop=True)
+
     def _fetch_yfinance(self, symbol: SymbolRef, period: str, start: datetime, end: datetime) -> pd.DataFrame:
         yf_symbol = _to_yf_symbol(symbol)
         try:
-            downloaded = yf.download(
-                tickers=yf_symbol,
-                start=start.astimezone(ZoneInfo("UTC")).replace(tzinfo=None),
-                end=end.astimezone(ZoneInfo("UTC")).replace(tzinfo=None),
-                interval=period,
-                auto_adjust=False,
-                progress=False,
-                threads=False,
-            )
-        except Exception:
+            ticker = yf.Ticker(yf_symbol)
+            yf_period = "1mo" if period == "1d" else "1d"
+            downloaded = ticker.history(period=yf_period, interval=period, auto_adjust=False)
+        except Exception as exc:
+            logger.warning("[live] yfinance exception  symbol=%s: %s", symbol.key, exc)
             return _empty_live_bar_df()
+        logger.debug("[live] yfinance returned rows=%d  symbol=%s", len(downloaded), symbol.key)
         return _normalize_realtime_df(downloaded, symbol.code, self.tz)
 
 
@@ -347,7 +405,6 @@ class LiveMarketDataStore:
     def _refresh_symbol_all_periods(self, symbol: SymbolRef, at: datetime) -> None:
         for period in _LIVE_FETCH_PERIODS:
             self._refresh_symbol_period(symbol=symbol, period=period, at=at)
-        self._rebuild_daily_from_60m(symbol=symbol)
 
     def _refresh_symbol_period(self, symbol: SymbolRef, period: str, at: datetime) -> None:
         minute_key = _floor_to_minute(_ensure_timezone(at, self.tz))
@@ -360,13 +417,21 @@ class LiveMarketDataStore:
         end_ts = at + timedelta(minutes=1)
         try:
             normalized = self.data_feed.fetch(symbol=symbol, period=period, start=start_ts, end=end_ts)
-        except Exception:
+        except Exception as exc:
+            logger.warning("[live] fetch failed  symbol=%s period=%s error=%s", symbol.key, period, exc)
             return
         if normalized.empty:
+            logger.debug("[live] no data after filter  symbol=%s period=%s range=%s->%s", symbol.key, period, start_ts.strftime("%H:%M"), end_ts.strftime("%H:%M"))
             return
         normalized = normalized[normalized["timestamp"] <= at].reset_index(drop=True)
         if normalized.empty:
+            logger.debug("[live] all rows filtered out  symbol=%s period=%s at=%s", symbol.key, period, minute_key.strftime("%H:%M:%S"))
             return
+        logger.debug(
+            "[live] fetched  symbol=%s period=%s rows=%d latest=%s",
+            symbol.key, period, len(normalized),
+            normalized["timestamp"].iloc[-1].strftime("%H:%M:%S"),
+        )
         existing = self._cache[period].get(symbol.key)
         if existing is None or existing.empty:
             self._cache[period][symbol.key] = normalized
@@ -433,9 +498,9 @@ class LiveExchange:
         self._current_time = normalized_tick
         self._current_bars = self.data_store.latest_1m(self._subscribed_symbols, at=normalized_tick)
         if self.debug:
-            print(
-                f"[LIVE][{normalized_tick.isoformat()}] tick "
-                f"bars={len(self._current_bars)} strategies={len(self.strategies)}"
+            logger.debug(
+                "[live] tick=%s bars=%d strategies=%d",
+                normalized_tick.strftime("%H:%M:%S"), len(self._current_bars), len(self.strategies),
             )
         for strategy in self.strategies:
             strategy_bars = {
@@ -446,9 +511,9 @@ class LiveExchange:
             before_orders = len(self.matching_engine.orders)
             strategy.on_minute(normalized_tick, strategy_bars)
             if self.debug:
-                print(
-                    f"[LIVE][{normalized_tick.isoformat()}] strategy={strategy.name} "
-                    f"bars={len(strategy_bars)} new_orders={len(self.matching_engine.orders) - before_orders}"
+                logger.debug(
+                    "[live] strategy=%s bars=%d new_orders=%d",
+                    strategy.name, len(strategy_bars), len(self.matching_engine.orders) - before_orders,
                 )
 
         # snapshot close prices when the trading day rolls over
@@ -616,26 +681,29 @@ def run_all_seasons_live(
 ) -> tuple[int, list[str], list[Order]]:
     season_slugs = list_valid_season_slugs(project_root=project_root, timezone=timezone)
     if not season_slugs:
+        logger.info("[live] no valid seasons found, exiting")
         return 0, [], []
 
     tz = ZoneInfo(timezone)
     shared_clock = RealClock(tz)
     shared_feed = MultiSourceDataFeed(timezone=timezone)
+    shared_store = LiveMarketDataStore(timezone=timezone, data_feed=shared_feed)
     exchanges: dict[str, LiveExchange] = {}
     for season_slug in season_slugs:
         season_strategies = load_season_strategies(season_slug=season_slug, project_root=project_root)
-        store = LiveMarketDataStore(timezone=timezone, data_feed=shared_feed)
         exchanges[season_slug] = LiveExchange(
             strategies=season_strategies,
             timezone=timezone,
             clock=shared_clock,
-            data_store=store,
+            data_store=shared_store,
             debug=debug,
         )
 
-    if debug:
-        total_strategies = sum(len(exchange.strategies) for exchange in exchanges.values())
-        print(f"[LIVE-ALL] valid_seasons={season_slugs} strategies={total_strategies}")
+    total_traders = sum(len(ex.strategies) for ex in exchanges.values())
+    logger.info(
+        "[live] started  seasons=%d traders=%d  slugs=%s",
+        len(exchanges), total_traders, season_slugs,
+    )
 
     end_ts: datetime | None = None
     if end_time is not None:
@@ -645,8 +713,26 @@ def run_all_seasons_live(
             end_ts = _ensure_timezone(datetime.fromisoformat(str(end_time).replace("Z", "+00:00")), ZoneInfo(timezone))
 
     start_tick = _floor_to_minute(shared_clock.now())
+    # collect all symbols across all seasons and warmup once
+    all_symbols: list[SymbolRef] = []
     for exchange in exchanges.values():
-        exchange.prepare(at=start_tick)
+        exchange._subscribed_symbols = exchange._collect_subscribed_symbols()
+        all_symbols.extend(exchange._subscribed_symbols)
+    # deduplicate by key
+    seen: set[str] = set()
+    unique_symbols = [s for s in all_symbols if not (s.key in seen or seen.add(s.key))]  # type: ignore[func-returns-value]
+    shared_store.warmup(unique_symbols, at=start_tick)
+
+    for symbol in unique_symbols:
+        period_bars = {
+            period: len(df)
+            for period in (*_LIVE_FETCH_PERIODS, "1d")
+            if (df := shared_store._cache.get(period, {}).get(symbol.key)) is not None and not df.empty
+        }
+        if period_bars:
+            logger.info("[live] warmup  symbol=%s bars=%s", symbol.key, period_bars)
+        else:
+            logger.warning("[live] warmup  symbol=%s NO data", symbol.key)
 
     triggered_minutes = 0
     while True:
@@ -657,13 +743,34 @@ def run_all_seasons_live(
         for exchange in exchanges.values():
             exchange.run_tick(tick_time)
 
+        total_bars = sum(len(ex._current_bars) for ex in exchanges.values())
+        if total_bars == 0:
+            logger.warning(
+                "[live] tick=%s  NO DATA received  seasons=%d traders=%d",
+                tick_time.strftime("%H:%M:%S"), len(exchanges), total_traders,
+            )
+        else:
+            latest_ts = max(
+                (bar["timestamp"] for ex in exchanges.values() for bar in ex._current_bars.values()),
+                default=None,
+            )
+            symbols_with_data = [k for ex in exchanges.values() for k in ex._current_bars]
+            logger.info(
+                "[live] tick=%s  seasons=%d traders=%d bars=%d latest_bar=%s",
+                tick_time.strftime("%H:%M:%S"),
+                len(exchanges), total_traders, total_bars,
+                latest_ts.strftime("%H:%M:%S") if latest_ts is not None else "n/a",
+            )
+
         triggered_minutes += 1
         if max_minutes is not None and triggered_minutes >= max_minutes:
             break
 
-        target = tick_time + timedelta(minutes=1)
-        target_ts = _ensure_timezone(target, tz)
-        shared_clock.sleep(max((target_ts - shared_clock.now()).total_seconds(), 0.0))
+        # sleep until the next whole minute, based on tick_time (not now) to avoid drift
+        target_ts = _ensure_timezone(tick_time + timedelta(minutes=1), tz)
+        sleep_secs = (target_ts - shared_clock.now()).total_seconds()
+        if sleep_secs > 0:
+            shared_clock.sleep(sleep_secs)
 
     merged_orders: list[Order] = []
     for season_slug, exchange in exchanges.items():
