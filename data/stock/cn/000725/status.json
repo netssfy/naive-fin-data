@@ -14,19 +14,19 @@
       "total_records": 4428
     },
     "15m": {
-      "last_fetch_time": "2026-04-03T17:53:15.560079+08:00",
-      "last_data_time": "2026-04-03T09:45:00+08:00",
-      "total_records": 1466
+      "last_fetch_time": "2026-04-04T17:37:42.699934+08:00",
+      "last_data_time": "2026-04-03T14:45:00+08:00",
+      "total_records": 1486
     },
     "30m": {
-      "last_fetch_time": "2026-04-03T17:53:17.922181+08:00",
-      "last_data_time": "2026-04-03T09:30:00+08:00",
-      "total_records": 738
+      "last_fetch_time": "2026-04-04T17:37:45.523489+08:00",
+      "last_data_time": "2026-04-03T14:30:00+08:00",
+      "total_records": 748
     },
     "60m": {
-      "last_fetch_time": "2026-04-03T17:53:20.279589+08:00",
-      "last_data_time": "2026-04-03T09:30:00+08:00",
-      "total_records": 4421
+      "last_fetch_time": "2026-04-04T17:37:48.284869+08:00",
+      "last_data_time": "2026-04-03T14:30:00+08:00",
+      "total_records": 4426
     },
     "1d": {
       "last_fetch_time": "2026-04-03T17:53:23.365721+08:00",
