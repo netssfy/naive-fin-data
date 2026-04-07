@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-06T18:09:01.419916+08:00",
+  "generated_at": "2026-04-07T18:07:43.416332+08:00",
   "items": [
     {
       "type": "stock",
@@ -8,40 +8,40 @@
       "name": "京东方Ａ",
       "periods": {
         "1m": {
-          "last_fetch_time": "2026-04-03T17:53:10.948047+08:00",
-          "last_data_time": "2026-04-03T15:00:00+08:00",
-          "total_records": 3615
+          "last_fetch_time": "2026-04-07T18:07:05.201786+08:00",
+          "last_data_time": "2026-04-07T15:00:00+08:00",
+          "total_records": 3856
         },
         "5m": {
-          "last_fetch_time": "2026-04-03T17:53:12.636300+08:00",
-          "last_data_time": "2026-04-03T15:00:00+08:00",
-          "total_records": 4428
+          "last_fetch_time": "2026-04-07T18:07:06.926080+08:00",
+          "last_data_time": "2026-04-07T15:00:00+08:00",
+          "total_records": 4476
         },
         "15m": {
-          "last_fetch_time": "2026-04-06T18:08:23.043252+08:00",
-          "last_data_time": "2026-04-03T15:00:00+08:00",
-          "total_records": 1487
+          "last_fetch_time": "2026-04-07T18:07:08.646612+08:00",
+          "last_data_time": "2026-04-07T15:00:00+08:00",
+          "total_records": 1503
         },
         "30m": {
-          "last_fetch_time": "2026-04-04T17:37:45.523489+08:00",
-          "last_data_time": "2026-04-03T14:30:00+08:00",
-          "total_records": 748
+          "last_fetch_time": "2026-04-07T18:07:10.124937+08:00",
+          "last_data_time": "2026-04-07T15:00:00+08:00",
+          "total_records": 757
         },
         "60m": {
-          "last_fetch_time": "2026-04-04T17:37:48.284869+08:00",
-          "last_data_time": "2026-04-03T14:30:00+08:00",
-          "total_records": 4426
+          "last_fetch_time": "2026-04-07T18:07:11.668702+08:00",
+          "last_data_time": "2026-04-07T15:00:00+08:00",
+          "total_records": 4431
         },
         "1d": {
-          "last_fetch_time": "2026-04-03T17:53:23.365721+08:00",
-          "last_data_time": "2026-04-03T00:00:00+08:00",
-          "total_records": 6215
+          "last_fetch_time": "2026-04-07T18:07:13.190279+08:00",
+          "last_data_time": "2026-04-07T00:00:00+08:00",
+          "total_records": 6216
         }
       },
       "period_count": 6,
-      "total_records": 20919,
-      "latest_fetch_time": "2026-04-06T18:08:23.043252+08:00",
-      "latest_data_time": "2026-04-03T15:00:00+08:00",
+      "total_records": 21239,
+      "latest_fetch_time": "2026-04-07T18:07:13.190279+08:00",
+      "latest_data_time": "2026-04-07T15:00:00+08:00",
       "status": "fresh"
     },
     {
@@ -71,9 +71,9 @@
           "total_records": 809
         },
         "60m": {
-          "last_fetch_time": "2026-04-03T17:53:47.998170+08:00",
-          "last_data_time": "2026-04-02T15:30:00+08:00",
-          "total_records": 5125
+          "last_fetch_time": "2026-04-07T18:07:38.609678+08:00",
+          "last_data_time": "2026-04-02T16:00:00+08:00",
+          "total_records": 5126
         },
         "1d": {
           "last_fetch_time": "2026-04-02T18:02:28.420542+08:00",
@@ -82,10 +82,10 @@
         }
       },
       "period_count": 6,
-      "total_records": 22672,
-      "latest_fetch_time": "2026-04-03T17:53:47.998170+08:00",
+      "total_records": 22673,
+      "latest_fetch_time": "2026-04-07T18:07:38.609678+08:00",
       "latest_data_time": "2026-04-02T16:08:00+08:00",
-      "status": "stale"
+      "status": "fresh"
     },
     {
       "type": "stock",
@@ -114,9 +114,9 @@
           "total_records": 806
         },
         "60m": {
-          "last_fetch_time": "2026-04-03T17:53:45.573787+08:00",
-          "last_data_time": "2026-04-02T15:30:00+08:00",
-          "total_records": 5126
+          "last_fetch_time": "2026-04-07T18:07:37.093214+08:00",
+          "last_data_time": "2026-04-02T16:00:00+08:00",
+          "total_records": 5127
         },
         "1d": {
           "last_fetch_time": "2026-04-02T18:02:25.179929+08:00",
@@ -125,10 +125,10 @@
         }
       },
       "period_count": 6,
-      "total_records": 19188,
-      "latest_fetch_time": "2026-04-03T17:53:45.573787+08:00",
+      "total_records": 19189,
+      "latest_fetch_time": "2026-04-07T18:07:37.093214+08:00",
       "latest_data_time": "2026-04-02T16:08:00+08:00",
-      "status": "stale"
+      "status": "fresh"
     }
   ]
 }
