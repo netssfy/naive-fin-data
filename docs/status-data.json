@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-17T18:14:27.972176+08:00",
+  "generated_at": "2026-04-18T17:48:58.372654+08:00",
   "items": [
     {
       "type": "stock",
@@ -51,14 +51,14 @@
       "name": "腾讯控股",
       "periods": {
         "1m": {
-          "last_fetch_time": "2026-04-17T18:14:09.255264+08:00",
-          "last_data_time": "2026-04-17T16:00:00+08:00",
-          "total_records": 7945
+          "last_fetch_time": "2026-04-18T17:48:17.217389+08:00",
+          "last_data_time": "2026-04-17T16:08:00+08:00",
+          "total_records": 7946
         },
         "5m": {
-          "last_fetch_time": "2026-04-17T18:14:12.610954+08:00",
-          "last_data_time": "2026-04-17T16:00:00+08:00",
-          "total_records": 5046
+          "last_fetch_time": "2026-04-18T17:48:24.760794+08:00",
+          "last_data_time": "2026-04-17T16:05:00+08:00",
+          "total_records": 5047
         },
         "15m": {
           "last_fetch_time": "2026-04-17T18:14:15.686859+08:00",
@@ -82,9 +82,9 @@
         }
       },
       "period_count": 6,
-      "total_records": 26197,
-      "latest_fetch_time": "2026-04-17T18:14:27.784356+08:00",
-      "latest_data_time": "2026-04-17T16:00:00+08:00",
+      "total_records": 26199,
+      "latest_fetch_time": "2026-04-18T17:48:24.760794+08:00",
+      "latest_data_time": "2026-04-17T16:08:00+08:00",
       "status": "fresh"
     },
     {
@@ -94,14 +94,14 @@
       "name": "小米集团－Ｗ",
       "periods": {
         "1m": {
-          "last_fetch_time": "2026-04-17T18:14:07.601012+08:00",
-          "last_data_time": "2026-04-17T16:00:00+08:00",
-          "total_records": 7945
+          "last_fetch_time": "2026-04-18T17:48:14.376033+08:00",
+          "last_data_time": "2026-04-17T16:08:00+08:00",
+          "total_records": 7946
         },
         "5m": {
-          "last_fetch_time": "2026-04-17T18:14:10.923306+08:00",
-          "last_data_time": "2026-04-17T16:00:00+08:00",
-          "total_records": 5044
+          "last_fetch_time": "2026-04-18T17:48:22.021481+08:00",
+          "last_data_time": "2026-04-17T16:05:00+08:00",
+          "total_records": 5045
         },
         "15m": {
           "last_fetch_time": "2026-04-17T18:14:14.150732+08:00",
@@ -125,9 +125,9 @@
         }
       },
       "period_count": 6,
-      "total_records": 22713,
-      "latest_fetch_time": "2026-04-17T18:14:25.311295+08:00",
-      "latest_data_time": "2026-04-17T16:00:00+08:00",
+      "total_records": 22715,
+      "latest_fetch_time": "2026-04-18T17:48:22.021481+08:00",
+      "latest_data_time": "2026-04-17T16:08:00+08:00",
       "status": "fresh"
     }
   ]
