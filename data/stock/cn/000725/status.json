@@ -4,9 +4,9 @@
   "type": "stock",
   "periods": {
     "1m": {
-      "last_fetch_time": "2026-04-17T18:13:58.175124+08:00",
-      "last_data_time": "2026-04-17T15:00:00+08:00",
-      "total_records": 5784
+      "last_fetch_time": "2026-04-20T18:47:46.210466+08:00",
+      "last_data_time": "2026-04-20T15:00:00+08:00",
+      "total_records": 6025
     },
     "5m": {
       "last_fetch_time": "2026-04-17T18:13:59.869006+08:00",
@@ -29,9 +29,9 @@
       "total_records": 4475
     },
     "1d": {
-      "last_fetch_time": "2026-04-17T18:14:05.896282+08:00",
-      "last_data_time": "2026-04-17T00:00:00+08:00",
-      "total_records": 6224
+      "last_fetch_time": "2026-04-20T18:48:02.152394+08:00",
+      "last_data_time": "2026-04-20T00:00:00+08:00",
+      "total_records": 6225
     }
   }
 }
