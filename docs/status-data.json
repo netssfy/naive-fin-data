@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-25T17:53:12.673793+08:00",
+  "generated_at": "2026-04-26T17:54:39.000947+08:00",
   "items": [
     {
       "type": "stock",
@@ -13,14 +13,14 @@
           "total_records": 6989
         },
         "5m": {
-          "last_fetch_time": "2026-04-25T17:52:32.622426+08:00",
-          "last_data_time": "2026-04-24T14:55:00+08:00",
-          "total_records": 5145
+          "last_fetch_time": "2026-04-26T17:53:38.402942+08:00",
+          "last_data_time": "2026-04-24T15:00:00+08:00",
+          "total_records": 5146
         },
         "15m": {
-          "last_fetch_time": "2026-04-25T17:52:34.840893+08:00",
-          "last_data_time": "2026-04-24T14:45:00+08:00",
-          "total_records": 1734
+          "last_fetch_time": "2026-04-26T17:53:40.559706+08:00",
+          "last_data_time": "2026-04-24T15:00:00+08:00",
+          "total_records": 1735
         },
         "30m": {
           "last_fetch_time": "2026-04-25T17:52:37.035631+08:00",
@@ -39,8 +39,8 @@
         }
       },
       "period_count": 6,
-      "total_records": 25467,
-      "latest_fetch_time": "2026-04-25T17:52:39.192600+08:00",
+      "total_records": 25469,
+      "latest_fetch_time": "2026-04-26T17:53:40.559706+08:00",
       "latest_data_time": "2026-04-24T15:00:00+08:00",
       "status": "fresh"
     },
