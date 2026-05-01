@@ -19,14 +19,14 @@
       "total_records": 1801
     },
     "30m": {
-      "last_fetch_time": "2026-04-30T18:55:11.192023+08:00",
-      "last_data_time": "2026-04-30T10:30:00+08:00",
-      "total_records": 907
+      "last_fetch_time": "2026-05-01T18:22:30.444917+08:00",
+      "last_data_time": "2026-04-30T15:00:00+08:00",
+      "total_records": 913
     },
     "60m": {
-      "last_fetch_time": "2026-04-30T18:55:13.951986+08:00",
-      "last_data_time": "2026-04-30T10:30:00+08:00",
-      "total_records": 4519
+      "last_fetch_time": "2026-05-01T18:22:31.802088+08:00",
+      "last_data_time": "2026-04-30T15:00:00+08:00",
+      "total_records": 4522
     },
     "1d": {
       "last_fetch_time": "2026-04-30T18:55:17.476586+08:00",
