@@ -4,14 +4,14 @@
   "type": "stock",
   "periods": {
     "1m": {
-      "last_fetch_time": "2026-06-12T20:18:45.300168+08:00",
-      "last_data_time": "2026-06-12T11:59:00+08:00",
-      "total_records": 20165
+      "last_fetch_time": "2026-06-13T19:13:52.055334+08:00",
+      "last_data_time": "2026-06-12T16:00:00+08:00",
+      "total_records": 20346
     },
     "5m": {
-      "last_fetch_time": "2026-06-12T20:18:50.768277+08:00",
-      "last_data_time": "2026-06-12T16:00:00+08:00",
-      "total_records": 7549
+      "last_fetch_time": "2026-06-13T19:14:00.152690+08:00",
+      "last_data_time": "2026-06-12T16:05:00+08:00",
+      "total_records": 7550
     },
     "15m": {
       "last_fetch_time": "2026-06-12T20:18:56.280026+08:00",
@@ -19,9 +19,9 @@
       "total_records": 2578
     },
     "30m": {
-      "last_fetch_time": "2026-06-12T20:19:02.496541+08:00",
-      "last_data_time": "2026-06-12T11:30:00+08:00",
-      "total_records": 1340
+      "last_fetch_time": "2026-06-13T19:14:15.047286+08:00",
+      "last_data_time": "2026-06-12T16:00:00+08:00",
+      "total_records": 1347
     },
     "60m": {
       "last_fetch_time": "2026-06-12T20:19:10.356617+08:00",
