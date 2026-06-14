@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-13T19:14:32.861296+08:00",
+  "generated_at": "2026-06-14T19:30:42.688882+08:00",
   "items": [
     {
       "type": "stock",
@@ -94,9 +94,9 @@
       "name": "小米集团－Ｗ",
       "periods": {
         "1m": {
-          "last_fetch_time": "2026-06-13T19:13:52.055334+08:00",
-          "last_data_time": "2026-06-12T16:00:00+08:00",
-          "total_records": 20346
+          "last_fetch_time": "2026-06-14T19:30:07.993637+08:00",
+          "last_data_time": "2026-06-12T16:08:00+08:00",
+          "total_records": 20347
         },
         "5m": {
           "last_fetch_time": "2026-06-13T19:14:00.152690+08:00",
@@ -125,9 +125,9 @@
         }
       },
       "period_count": 6,
-      "total_records": 39213,
-      "latest_fetch_time": "2026-06-13T19:14:15.047286+08:00",
-      "latest_data_time": "2026-06-12T16:05:00+08:00",
+      "total_records": 39214,
+      "latest_fetch_time": "2026-06-14T19:30:07.993637+08:00",
+      "latest_data_time": "2026-06-12T16:08:00+08:00",
       "status": "fresh"
     }
   ]
