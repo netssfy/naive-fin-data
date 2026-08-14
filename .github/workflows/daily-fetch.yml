@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     # 09:00 UTC = 17:00 Asia/Shanghai
-    - cron: "0 9 * * *"
+    - cron: "0 13 * * *"
 
 jobs:
   fetch:
