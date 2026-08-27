@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-26T06:33:16.915530+08:00",
+  "generated_at": "2026-08-27T11:00:57.242989+08:00",
   "items": [
     {
       "type": "stock",
@@ -8,40 +8,40 @@
       "name": "京东方Ａ",
       "periods": {
         "1m": {
-          "last_fetch_time": "2026-08-26T06:32:31.077839+08:00",
-          "last_data_time": "2026-08-25T14:59:00+08:00",
-          "total_records": 32384
+          "last_fetch_time": "2026-08-27T11:00:23.907527+08:00",
+          "last_data_time": "2026-08-26T14:59:00+08:00",
+          "total_records": 32714
         },
         "5m": {
-          "last_fetch_time": "2026-08-26T06:32:33.624333+08:00",
-          "last_data_time": "2026-08-25T14:55:00+08:00",
-          "total_records": 10320
+          "last_fetch_time": "2026-08-27T11:00:26.425119+08:00",
+          "last_data_time": "2026-08-26T14:55:00+08:00",
+          "total_records": 10386
         },
         "15m": {
-          "last_fetch_time": "2026-08-26T06:32:36.101593+08:00",
-          "last_data_time": "2026-08-25T14:45:00+08:00",
-          "total_records": 3434
+          "last_fetch_time": "2026-08-27T11:00:27.956870+08:00",
+          "last_data_time": "2026-08-27T11:00:00+08:00",
+          "total_records": 3457
         },
         "30m": {
-          "last_fetch_time": "2026-08-26T06:32:37.439731+08:00",
-          "last_data_time": "2026-08-25T15:00:00+08:00",
-          "total_records": 1734
+          "last_fetch_time": "2026-08-27T11:00:29.507941+08:00",
+          "last_data_time": "2026-08-27T11:00:00+08:00",
+          "total_records": 1745
         },
         "60m": {
-          "last_fetch_time": "2026-08-26T06:32:40.442389+08:00",
-          "last_data_time": "2026-08-25T14:30:00+08:00",
-          "total_records": 4969
+          "last_fetch_time": "2026-08-27T11:00:31.054151+08:00",
+          "last_data_time": "2026-08-27T10:30:00+08:00",
+          "total_records": 4975
         },
         "1d": {
-          "last_fetch_time": "2026-08-26T06:32:42.455518+08:00",
-          "last_data_time": "2026-08-25T00:00:00+08:00",
-          "total_records": 6312
+          "last_fetch_time": "2026-08-27T11:00:32.634138+08:00",
+          "last_data_time": "2026-08-27T00:00:00+08:00",
+          "total_records": 6314
         }
       },
       "period_count": 6,
-      "total_records": 59153,
-      "latest_fetch_time": "2026-08-26T06:32:42.455518+08:00",
-      "latest_data_time": "2026-08-25T15:00:00+08:00",
+      "total_records": 59591,
+      "latest_fetch_time": "2026-08-27T11:00:32.634138+08:00",
+      "latest_data_time": "2026-08-27T11:00:00+08:00",
       "status": "fresh"
     },
     {
@@ -51,40 +51,40 @@
       "name": "腾讯控股",
       "periods": {
         "1m": {
-          "last_fetch_time": "2026-08-26T06:32:47.890340+08:00",
-          "last_data_time": "2026-08-25T16:08:00+08:00",
-          "total_records": 36904
+          "last_fetch_time": "2026-08-27T11:00:36.136020+08:00",
+          "last_data_time": "2026-08-27T11:01:00+08:00",
+          "total_records": 37327
         },
         "5m": {
-          "last_fetch_time": "2026-08-26T06:32:52.595611+08:00",
-          "last_data_time": "2026-08-25T16:00:00+08:00",
-          "total_records": 10905
+          "last_fetch_time": "2026-08-27T11:00:39.773388+08:00",
+          "last_data_time": "2026-08-27T11:00:00+08:00",
+          "total_records": 10989
         },
         "15m": {
-          "last_fetch_time": "2026-08-26T06:32:57.769044+08:00",
-          "last_data_time": "2026-08-25T16:00:00+08:00",
-          "total_records": 3727
+          "last_fetch_time": "2026-08-27T11:00:42.897977+08:00",
+          "last_data_time": "2026-08-27T11:00:00+08:00",
+          "total_records": 3755
         },
         "30m": {
-          "last_fetch_time": "2026-08-26T06:33:02.839650+08:00",
-          "last_data_time": "2026-08-25T16:00:00+08:00",
-          "total_records": 1944
+          "last_fetch_time": "2026-08-27T11:00:45.834202+08:00",
+          "last_data_time": "2026-08-27T11:00:00+08:00",
+          "total_records": 1958
         },
         "60m": {
-          "last_fetch_time": "2026-08-26T06:33:08.414149+08:00",
-          "last_data_time": "2026-08-25T15:30:00+08:00",
-          "total_records": 5787
+          "last_fetch_time": "2026-08-27T11:00:50.576795+08:00",
+          "last_data_time": "2026-08-27T10:30:00+08:00",
+          "total_records": 5795
         },
         "1d": {
-          "last_fetch_time": "2026-08-26T06:33:16.767648+08:00",
-          "last_data_time": "2026-08-25T00:00:00+08:00",
-          "total_records": 5479
+          "last_fetch_time": "2026-08-27T11:00:57.086136+08:00",
+          "last_data_time": "2026-08-26T00:00:00+08:00",
+          "total_records": 5480
         }
       },
       "period_count": 6,
-      "total_records": 64746,
-      "latest_fetch_time": "2026-08-26T06:33:16.767648+08:00",
-      "latest_data_time": "2026-08-25T16:08:00+08:00",
+      "total_records": 65304,
+      "latest_fetch_time": "2026-08-27T11:00:57.086136+08:00",
+      "latest_data_time": "2026-08-27T11:01:00+08:00",
       "status": "fresh"
     },
     {
@@ -94,40 +94,40 @@
       "name": "小米集团－Ｗ",
       "periods": {
         "1m": {
-          "last_fetch_time": "2026-08-26T06:32:45.127718+08:00",
-          "last_data_time": "2026-08-25T16:08:00+08:00",
-          "total_records": 36904
+          "last_fetch_time": "2026-08-27T11:00:34.399471+08:00",
+          "last_data_time": "2026-08-27T11:01:00+08:00",
+          "total_records": 37327
         },
         "5m": {
-          "last_fetch_time": "2026-08-26T06:32:50.411861+08:00",
-          "last_data_time": "2026-08-25T16:05:00+08:00",
-          "total_records": 10902
+          "last_fetch_time": "2026-08-27T11:00:37.943639+08:00",
+          "last_data_time": "2026-08-27T11:00:00+08:00",
+          "total_records": 10986
         },
         "15m": {
-          "last_fetch_time": "2026-08-26T06:32:55.140433+08:00",
-          "last_data_time": "2026-08-25T16:00:00+08:00",
-          "total_records": 3714
+          "last_fetch_time": "2026-08-27T11:00:41.327971+08:00",
+          "last_data_time": "2026-08-27T11:00:00+08:00",
+          "total_records": 3742
         },
         "30m": {
-          "last_fetch_time": "2026-08-26T06:33:00.275224+08:00",
-          "last_data_time": "2026-08-25T16:00:00+08:00",
-          "total_records": 1937
+          "last_fetch_time": "2026-08-27T11:00:44.251287+08:00",
+          "last_data_time": "2026-08-27T11:00:00+08:00",
+          "total_records": 1951
         },
         "60m": {
-          "last_fetch_time": "2026-08-26T06:33:05.441307+08:00",
-          "last_data_time": "2026-08-25T15:30:00+08:00",
-          "total_records": 5786
+          "last_fetch_time": "2026-08-27T11:00:48.428537+08:00",
+          "last_data_time": "2026-08-26T15:30:00+08:00",
+          "total_records": 5793
         },
         "1d": {
-          "last_fetch_time": "2026-08-26T06:33:12.710144+08:00",
-          "last_data_time": "2026-08-25T00:00:00+08:00",
-          "total_records": 2001
+          "last_fetch_time": "2026-08-27T11:00:53.949991+08:00",
+          "last_data_time": "2026-08-26T00:00:00+08:00",
+          "total_records": 2002
         }
       },
       "period_count": 6,
-      "total_records": 61244,
-      "latest_fetch_time": "2026-08-26T06:33:12.710144+08:00",
-      "latest_data_time": "2026-08-25T16:08:00+08:00",
+      "total_records": 61801,
+      "latest_fetch_time": "2026-08-27T11:00:53.949991+08:00",
+      "latest_data_time": "2026-08-27T11:01:00+08:00",
       "status": "fresh"
     }
   ]
