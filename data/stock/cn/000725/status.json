@@ -9,9 +9,9 @@
       "total_records": 33196
     },
     "5m": {
-      "last_fetch_time": "2026-08-29T11:34:30.500435+08:00",
-      "last_data_time": "2026-08-28T14:55:00+08:00",
-      "total_records": 10482
+      "last_fetch_time": "2026-08-30T07:57:40.323854+08:00",
+      "last_data_time": "2026-08-28T15:00:00+08:00",
+      "total_records": 10483
     },
     "15m": {
       "last_fetch_time": "2026-08-29T11:34:34.299254+08:00",
@@ -24,9 +24,9 @@
       "total_records": 1757
     },
     "60m": {
-      "last_fetch_time": "2026-08-29T11:34:40.847250+08:00",
-      "last_data_time": "2026-08-28T14:30:00+08:00",
-      "total_records": 4985
+      "last_fetch_time": "2026-08-30T07:57:47.895506+08:00",
+      "last_data_time": "2026-08-28T15:00:00+08:00",
+      "total_records": 4986
     },
     "1d": {
       "last_fetch_time": "2026-08-29T11:34:45.977644+08:00",
