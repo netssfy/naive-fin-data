@@ -14,9 +14,9 @@
       "total_records": 10483
     },
     "15m": {
-      "last_fetch_time": "2026-08-29T11:34:34.299254+08:00",
-      "last_data_time": "2026-08-28T14:45:00+08:00",
-      "total_records": 3482
+      "last_fetch_time": "2026-08-31T08:17:03.215976+08:00",
+      "last_data_time": "2026-08-28T15:00:00+08:00",
+      "total_records": 3483
     },
     "30m": {
       "last_fetch_time": "2026-08-29T11:34:38.121530+08:00",
