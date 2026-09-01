@@ -4,34 +4,34 @@
   "type": "stock",
   "periods": {
     "1m": {
-      "last_fetch_time": "2026-08-29T11:34:27.742453+08:00",
-      "last_data_time": "2026-08-28T14:59:00+08:00",
-      "total_records": 33196
+      "last_fetch_time": "2026-09-01T09:05:01.814787+08:00",
+      "last_data_time": "2026-08-31T14:59:00+08:00",
+      "total_records": 33526
     },
     "5m": {
-      "last_fetch_time": "2026-08-30T07:57:40.323854+08:00",
-      "last_data_time": "2026-08-28T15:00:00+08:00",
-      "total_records": 10483
+      "last_fetch_time": "2026-09-01T09:05:04.074205+08:00",
+      "last_data_time": "2026-08-31T14:55:00+08:00",
+      "total_records": 10549
     },
     "15m": {
-      "last_fetch_time": "2026-08-31T08:17:03.215976+08:00",
-      "last_data_time": "2026-08-28T15:00:00+08:00",
-      "total_records": 3483
+      "last_fetch_time": "2026-09-01T09:05:06.324698+08:00",
+      "last_data_time": "2026-08-31T14:45:00+08:00",
+      "total_records": 3505
     },
     "30m": {
-      "last_fetch_time": "2026-08-29T11:34:38.121530+08:00",
-      "last_data_time": "2026-08-28T14:30:00+08:00",
-      "total_records": 1757
+      "last_fetch_time": "2026-09-01T09:05:07.625096+08:00",
+      "last_data_time": "2026-08-31T15:00:00+08:00",
+      "total_records": 1766
     },
     "60m": {
-      "last_fetch_time": "2026-08-30T07:57:47.895506+08:00",
-      "last_data_time": "2026-08-28T15:00:00+08:00",
-      "total_records": 4986
+      "last_fetch_time": "2026-09-01T09:05:09.881818+08:00",
+      "last_data_time": "2026-08-31T14:30:00+08:00",
+      "total_records": 4992
     },
     "1d": {
-      "last_fetch_time": "2026-08-29T11:34:45.977644+08:00",
-      "last_data_time": "2026-08-28T00:00:00+08:00",
-      "total_records": 6315
+      "last_fetch_time": "2026-09-01T09:05:12.677890+08:00",
+      "last_data_time": "2026-08-31T00:00:00+08:00",
+      "total_records": 6316
     }
   }
 }
