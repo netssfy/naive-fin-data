@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-05T07:49:31.172244+08:00",
+  "generated_at": "2026-09-06T07:38:28.327030+08:00",
   "items": [
     {
       "type": "stock",
@@ -13,9 +13,9 @@
           "total_records": 34846
         },
         "5m": {
-          "last_fetch_time": "2026-09-05T07:48:57.625990+08:00",
-          "last_data_time": "2026-09-04T14:55:00+08:00",
-          "total_records": 10813
+          "last_fetch_time": "2026-09-06T07:37:52.987664+08:00",
+          "last_data_time": "2026-09-04T15:00:00+08:00",
+          "total_records": 10814
         },
         "15m": {
           "last_fetch_time": "2026-09-05T07:48:59.359994+08:00",
@@ -23,9 +23,9 @@
           "total_records": 3583
         },
         "30m": {
-          "last_fetch_time": "2026-09-05T07:49:01.381421+08:00",
-          "last_data_time": "2026-09-04T14:30:00+08:00",
-          "total_records": 1804
+          "last_fetch_time": "2026-09-06T07:37:56.702350+08:00",
+          "last_data_time": "2026-09-04T15:00:00+08:00",
+          "total_records": 1805
         },
         "60m": {
           "last_fetch_time": "2026-09-05T07:49:03.341066+08:00",
@@ -39,8 +39,8 @@
         }
       },
       "period_count": 6,
-      "total_records": 62381,
-      "latest_fetch_time": "2026-09-05T07:49:05.706019+08:00",
+      "total_records": 62383,
+      "latest_fetch_time": "2026-09-06T07:37:56.702350+08:00",
       "latest_data_time": "2026-09-04T15:00:00+08:00",
       "status": "fresh"
     },
@@ -56,9 +56,9 @@
           "total_records": 39552
         },
         "5m": {
-          "last_fetch_time": "2026-09-05T07:49:13.447665+08:00",
-          "last_data_time": "2026-09-04T16:00:00+08:00",
-          "total_records": 11438
+          "last_fetch_time": "2026-09-06T07:38:10.106379+08:00",
+          "last_data_time": "2026-09-04T16:05:00+08:00",
+          "total_records": 11439
         },
         "15m": {
           "last_fetch_time": "2026-09-05T07:49:17.368621+08:00",
@@ -82,8 +82,8 @@
         }
       },
       "period_count": 6,
-      "total_records": 68266,
-      "latest_fetch_time": "2026-09-05T07:49:31.021321+08:00",
+      "total_records": 68267,
+      "latest_fetch_time": "2026-09-06T07:38:10.106379+08:00",
       "latest_data_time": "2026-09-04T16:08:00+08:00",
       "status": "fresh"
     },
