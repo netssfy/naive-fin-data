@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-06T07:38:28.327030+08:00",
+  "generated_at": "2026-09-07T07:37:40.549915+08:00",
   "items": [
     {
       "type": "stock",
@@ -128,7 +128,7 @@
       "total_records": 64765,
       "latest_fetch_time": "2026-09-05T07:49:28.216572+08:00",
       "latest_data_time": "2026-09-04T16:08:00+08:00",
-      "status": "fresh"
+      "status": "stale"
     }
   ]
 }
