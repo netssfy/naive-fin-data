@@ -9,9 +9,9 @@
       "total_records": 36496
     },
     "5m": {
-      "last_fetch_time": "2026-09-12T07:58:07.805969+08:00",
-      "last_data_time": "2026-09-11T14:55:00+08:00",
-      "total_records": 11127
+      "last_fetch_time": "2026-09-13T07:51:41.504503+08:00",
+      "last_data_time": "2026-09-11T15:00:00+08:00",
+      "total_records": 11128
     },
     "15m": {
       "last_fetch_time": "2026-09-12T07:58:09.828436+08:00",
