@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-13T07:52:18.199457+08:00",
+  "generated_at": "2026-09-14T07:57:38.392886+08:00",
   "items": [
     {
       "type": "stock",
@@ -8,9 +8,9 @@
       "name": "京东方Ａ",
       "periods": {
         "1m": {
-          "last_fetch_time": "2026-09-12T07:58:05.758066+08:00",
-          "last_data_time": "2026-09-11T14:59:00+08:00",
-          "total_records": 36496
+          "last_fetch_time": "2026-09-14T07:56:46.160019+08:00",
+          "last_data_time": "2026-09-11T15:00:00+08:00",
+          "total_records": 36497
         },
         "5m": {
           "last_fetch_time": "2026-09-13T07:51:41.504503+08:00",
@@ -18,19 +18,19 @@
           "total_records": 11128
         },
         "15m": {
-          "last_fetch_time": "2026-09-12T07:58:09.828436+08:00",
-          "last_data_time": "2026-09-11T14:45:00+08:00",
-          "total_records": 3682
+          "last_fetch_time": "2026-09-14T07:56:50.332243+08:00",
+          "last_data_time": "2026-09-11T15:00:00+08:00",
+          "total_records": 3683
         },
         "30m": {
-          "last_fetch_time": "2026-09-12T07:58:12.292147+08:00",
-          "last_data_time": "2026-09-11T14:30:00+08:00",
-          "total_records": 1855
+          "last_fetch_time": "2026-09-14T07:56:52.051229+08:00",
+          "last_data_time": "2026-09-11T15:00:00+08:00",
+          "total_records": 1856
         },
         "60m": {
-          "last_fetch_time": "2026-09-12T07:58:14.226193+08:00",
-          "last_data_time": "2026-09-11T14:30:00+08:00",
-          "total_records": 5044
+          "last_fetch_time": "2026-09-14T07:56:53.748368+08:00",
+          "last_data_time": "2026-09-11T15:00:00+08:00",
+          "total_records": 5045
         },
         "1d": {
           "last_fetch_time": "2026-09-12T07:58:16.646139+08:00",
@@ -39,8 +39,8 @@
         }
       },
       "period_count": 6,
-      "total_records": 64530,
-      "latest_fetch_time": "2026-09-13T07:51:41.504503+08:00",
+      "total_records": 64534,
+      "latest_fetch_time": "2026-09-14T07:56:53.748368+08:00",
       "latest_data_time": "2026-09-11T15:00:00+08:00",
       "status": "fresh"
     },
@@ -85,7 +85,7 @@
       "total_records": 70473,
       "latest_fetch_time": "2026-09-12T07:58:43.643800+08:00",
       "latest_data_time": "2026-09-11T16:08:00+08:00",
-      "status": "fresh"
+      "status": "stale"
     },
     {
       "type": "stock",
@@ -128,7 +128,7 @@
       "total_records": 66971,
       "latest_fetch_time": "2026-09-12T07:58:40.722906+08:00",
       "latest_data_time": "2026-09-11T16:08:00+08:00",
-      "status": "fresh"
+      "status": "stale"
     }
   ]
 }
