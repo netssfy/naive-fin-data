@@ -4,9 +4,9 @@
   "type": "stock",
   "periods": {
     "1m": {
-      "last_fetch_time": "2026-09-19T07:59:06.944645+08:00",
-      "last_data_time": "2026-09-18T16:00:00+08:00",
-      "total_records": 42863
+      "last_fetch_time": "2026-09-20T07:57:51.903689+08:00",
+      "last_data_time": "2026-09-18T16:08:00+08:00",
+      "total_records": 42864
     },
     "5m": {
       "last_fetch_time": "2026-09-19T07:59:11.024868+08:00",
