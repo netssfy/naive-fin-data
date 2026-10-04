@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-03T09:00:23.494563+08:00",
+  "generated_at": "2026-10-04T08:25:13.588729+08:00",
   "items": [
     {
       "type": "stock",
@@ -56,9 +56,9 @@
           "total_records": 45845
         },
         "5m": {
-          "last_fetch_time": "2026-10-03T09:00:04.800174+08:00",
-          "last_data_time": "2026-10-02T16:00:00+08:00",
-          "total_records": 12710
+          "last_fetch_time": "2026-10-04T08:24:51.390761+08:00",
+          "last_data_time": "2026-10-02T16:05:00+08:00",
+          "total_records": 12711
         },
         "15m": {
           "last_fetch_time": "2026-10-03T09:00:09.331567+08:00",
@@ -82,8 +82,8 @@
         }
       },
       "period_count": 6,
-      "total_records": 76647,
-      "latest_fetch_time": "2026-10-03T09:00:23.374293+08:00",
+      "total_records": 76648,
+      "latest_fetch_time": "2026-10-04T08:24:51.390761+08:00",
       "latest_data_time": "2026-10-02T16:08:00+08:00",
       "status": "fresh"
     },
