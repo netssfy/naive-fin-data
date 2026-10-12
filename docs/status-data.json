@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-11T08:45:01.805881+08:00",
+  "generated_at": "2026-10-12T09:06:05.996928+08:00",
   "items": [
     {
       "type": "stock",
@@ -85,7 +85,7 @@
       "total_records": 78853,
       "latest_fetch_time": "2026-10-10T09:35:04.936030+08:00",
       "latest_data_time": "2026-10-09T16:08:00+08:00",
-      "status": "fresh"
+      "status": "stale"
     },
     {
       "type": "stock",
@@ -128,7 +128,7 @@
       "total_records": 75346,
       "latest_fetch_time": "2026-10-10T09:35:02.486483+08:00",
       "latest_data_time": "2026-10-09T16:08:00+08:00",
-      "status": "fresh"
+      "status": "stale"
     }
   ]
 }
