@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T08:00:05.710116+08:00",
+  "generated_at": "2026-10-20T08:58:45.213762+08:00",
   "items": [
     {
       "type": "stock",
@@ -8,40 +8,40 @@
       "name": "京东方Ａ",
       "periods": {
         "1m": {
-          "last_fetch_time": "2026-10-17T08:12:29.821266+08:00",
-          "last_data_time": "2026-10-16T14:59:00+08:00",
-          "total_records": 42489
+          "last_fetch_time": "2026-10-20T08:57:57.788864+08:00",
+          "last_data_time": "2026-10-19T14:59:00+08:00",
+          "total_records": 42819
         },
         "5m": {
-          "last_fetch_time": "2026-10-17T08:12:31.504059+08:00",
-          "last_data_time": "2026-10-16T15:00:00+08:00",
-          "total_records": 12274
+          "last_fetch_time": "2026-10-20T08:58:00.475723+08:00",
+          "last_data_time": "2026-10-19T14:55:00+08:00",
+          "total_records": 12340
         },
         "15m": {
-          "last_fetch_time": "2026-10-17T08:12:33.065419+08:00",
-          "last_data_time": "2026-10-16T15:00:00+08:00",
-          "total_records": 4064
+          "last_fetch_time": "2026-10-20T08:58:03.096956+08:00",
+          "last_data_time": "2026-10-19T14:45:00+08:00",
+          "total_records": 4086
         },
         "30m": {
-          "last_fetch_time": "2026-10-17T08:12:35.653348+08:00",
-          "last_data_time": "2026-10-16T14:30:00+08:00",
-          "total_records": 2043
+          "last_fetch_time": "2026-10-20T08:58:04.657734+08:00",
+          "last_data_time": "2026-10-19T15:00:00+08:00",
+          "total_records": 2052
         },
         "60m": {
-          "last_fetch_time": "2026-10-19T07:59:35.832540+08:00",
-          "last_data_time": "2026-10-16T15:00:00+08:00",
-          "total_records": 5155
+          "last_fetch_time": "2026-10-20T08:58:07.336990+08:00",
+          "last_data_time": "2026-10-19T14:30:00+08:00",
+          "total_records": 5161
         },
         "1d": {
-          "last_fetch_time": "2026-10-17T08:12:41.145151+08:00",
-          "last_data_time": "2026-10-16T00:00:00+08:00",
-          "total_records": 6344
+          "last_fetch_time": "2026-10-20T08:58:09.575578+08:00",
+          "last_data_time": "2026-10-19T00:00:00+08:00",
+          "total_records": 6345
         }
       },
       "period_count": 6,
-      "total_records": 72369,
-      "latest_fetch_time": "2026-10-19T07:59:35.832540+08:00",
-      "latest_data_time": "2026-10-16T15:00:00+08:00",
+      "total_records": 72803,
+      "latest_fetch_time": "2026-10-20T08:58:09.575578+08:00",
+      "latest_data_time": "2026-10-19T15:00:00+08:00",
       "status": "fresh"
     },
     {
