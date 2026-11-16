@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-15T09:35:41.993444+08:00",
+  "generated_at": "2026-11-16T09:40:02.768697+08:00",
   "items": [
     {
       "type": "stock",
@@ -28,9 +28,9 @@
           "total_records": 2228
         },
         "60m": {
-          "last_fetch_time": "2026-11-14T10:02:22.095140+08:00",
-          "last_data_time": "2026-11-13T14:30:00+08:00",
-          "total_records": 5254
+          "last_fetch_time": "2026-11-16T09:39:37.937823+08:00",
+          "last_data_time": "2026-11-13T15:00:00+08:00",
+          "total_records": 5255
         },
         "1d": {
           "last_fetch_time": "2026-11-13T10:28:18.210339+08:00",
@@ -39,8 +39,8 @@
         }
       },
       "period_count": 6,
-      "total_records": 80048,
-      "latest_fetch_time": "2026-11-15T09:35:07.131996+08:00",
+      "total_records": 80049,
+      "latest_fetch_time": "2026-11-16T09:39:37.937823+08:00",
       "latest_data_time": "2026-11-13T15:00:00+08:00",
       "status": "fresh"
     },
@@ -56,9 +56,9 @@
           "total_records": 55431
         },
         "5m": {
-          "last_fetch_time": "2026-11-14T10:02:36.625488+08:00",
-          "last_data_time": "2026-11-13T16:05:00+08:00",
-          "total_records": 14638
+          "last_fetch_time": "2026-11-16T09:39:46.791795+08:00",
+          "last_data_time": "2026-11-16T09:40:00+08:00",
+          "total_records": 14640
         },
         "15m": {
           "last_fetch_time": "2026-11-14T10:02:42.031960+08:00",
@@ -82,9 +82,9 @@
         }
       },
       "period_count": 6,
-      "total_records": 89376,
-      "latest_fetch_time": "2026-11-14T10:02:52.613489+08:00",
-      "latest_data_time": "2026-11-13T16:08:00+08:00",
+      "total_records": 89378,
+      "latest_fetch_time": "2026-11-16T09:39:46.791795+08:00",
+      "latest_data_time": "2026-11-16T09:40:00+08:00",
       "status": "fresh"
     },
     {
@@ -128,7 +128,7 @@
       "total_records": 85868,
       "latest_fetch_time": "2026-11-14T10:02:50.043938+08:00",
       "latest_data_time": "2026-11-13T16:08:00+08:00",
-      "status": "fresh"
+      "status": "stale"
     }
   ]
 }
